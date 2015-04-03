@@ -51,6 +51,6 @@ class RunBotState:
                             or self.announcements[stream_id] < announce_cutoff)):
 
                     on_new_broadcast(stream)
-                    self.announcements[stream_id] = time.time()
+                self.announcements[stream_id] = time.time()
     
         self.streams = latest_streams
