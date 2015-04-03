@@ -9,12 +9,8 @@ from plugins.runbot.services.service import RunBotService
 
 @service_class
 class HitboxService(RunBotService):
-    def __init__(self, games=[], 
-            keyword_whitelist=[],
-            keyword_blacklist=[]):
+    def __init__(self, games=[]):
         self.games = games
-        self.keyword_whitelist = keyword_whitelist
-        self.keyword_blacklist = keyword_blacklist
 
         if not isinstance(self.games, list):
             self.games = [self.games]
@@ -56,51 +52,6 @@ class HitboxService(RunBotService):
         for game in self.games:
             streams.extend(self.get_all_streams_of_game(game))
         return streams
-
-    def get_filtered_streams(self):
-        '''Gets the streams a filters list of streams for all games.
-
-        Gets all streams for all games and applies the instansiated whitelist
-        and blacklist returning only streams where at least one word in the
-        whitelist occurs, and no words in the black list occur.
-
-        An empty whitelist allows all streams, an empty blacklist
-        should filter no streams.
-
-        Returns:
-            A list of dicts, where each dict is a stream as returned by the
-            Hitbox API.
-        '''
-
-        streams = self.get_all_streams()
-        streams = self.apply_whitelist(streams)
-        streams = self.apply_blacklist(streams)
-
-        return streams
-
-    def apply_whitelist(self, streams):
-        if not self.keyword_whitelist:
-            return streams
-        
-        whitelist = '|'.join(re.escape(term) for term in self.keyword_whitelist)
-        whitelist_re = re.compile(whitelist, flags=re.IGNORECASE)
-
-        allowed = [stream for stream in streams
-            if whitelist_re.search(stream['channel'].get('status', '') or '')]
-
-        return allowed
-
-    def apply_blacklist(self, streams):
-        if not self.keyword_blacklist:
-            return streams
-        
-        blacklist = '|'.join(re.escape(term) for term in self.keyword_blacklist)
-        blacklist_re = re.compile(blacklist, flags=re.IGNORECASE)
-
-        allowed = [stream for stream in streams
-            if not blacklist_re.search(stream['channel'].get('status', '') or '')]
-
-        return allowed
 
     def get_all_streams_of_streamers(self, streamers):
         url = self.endpoints['stream']
