@@ -38,9 +38,9 @@ class TwitchService(RunBotService):
         
         return {
             'title': stream['channel'].get('status', ''),
-            'viewers': stream['viewers'],
-            'streamer': stream['channel']['display_name'],
-            'url': stream['channel']['url'],
+            'viewers': stream.get('viewers', 0),
+            'streamer': stream['channel'].get('display_name', ''),
+            'url': stream['channel'].get('url', ''),
         }
 
     def get_all_streams(self):
