@@ -36,8 +36,11 @@ class RunBotState:
         latest_streams = {}
             
         for name, service in self.services.iteritems():
-            streams = [service.extract_stream_info(stream) 
-                for stream in service.get_filtered_streams()]
+            try:
+                streams = [service.extract_stream_info(stream)
+                    for stream in service.get_filtered_streams()]
+            except Exception:
+                pass
             
             latest_streams = {"{}_{}".format(name, stream['streamer']): stream
                     for stream in streams}
