@@ -2,7 +2,12 @@ from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 
 from plugins.runbot.state import RunBotState
-from pyaib.plugins import keyword, plugin_class, every
+from pyaib.plugins import keyword, plugin_class, every, observe
+
+import time
+from parse import parse
+from collections import defaultdict
+import functools 
 
 @plugin_class
 class RunBot(object):
@@ -12,11 +17,14 @@ class RunBot(object):
             keyword_whitelist=config['keyword_whitelist'],
             keyword_blacklist=config['keyword_blacklist'],
             announce_limit=config['announce_limit'],
-            services=config['services'])
+            services=config['services'],
+            streamer_blacklist_file=config['streamer_blacklist_file'])
 
         self.display_cutoff = config['display_cutoff']
         self.update_interval = config['update_interval']
-
+        self.login_timeout = config['login_timeout']
+        self.admin_users = config['admin_users']
+        
         # Save the IRC context
         self.irc_c = irc_c
 
@@ -29,7 +37,64 @@ class RunBot(object):
         self.update_streams.__func__.__plugs__ = ('timers', 
             [('update_streams', self.update_interval)])
 
+        self.registered_users = {}
+
         print("RunBot Plugin Loaded!")
+
+    @observe('IRC_RAW_MSG')
+    def parse_whois(self, irc_c, msg):
+        login = parse(":{server} {} {} {nick} :is identified for this nick", msg)
+        if login:
+            data = login.named
+            self.registered_users[data['nick']] = time.time()
+
+    def require_admin(wrapped):
+        @functools.wraps(wrapped)
+        def _wrapper(self, irc_c, msg, trigger, args, kwargs):
+            if (msg.sender.lower() not in self.admin_users):
+                msg.reply("Sorry, {} is cannot perform that command.".format(msg.sender))
+                return
+                
+            login_cutoff = time.time() - self.login_timeout
+            if (msg.sender not in self.registered_users 
+                    or self.registered_users[msg.sender] < login_cutoff):
+                msg.reply("Please !login")
+                return
+
+            return wrapped(self, irc_c, msg, trigger, args, kwargs)
+        return _wrapper 
+
+    @require_admin
+    @keyword('blacklist')
+    def add_blacklist(self, irc_c, msg, trigger, args, kargs):
+        if not args:
+            msg.reply("Current Blacklist: {}".format(
+                ", ".join(self.state.streamer_blacklist)))
+            return
+            
+        for streamer in [arg.lower() for arg in args]:
+            if streamer not in self.state.streamer_blacklist:
+                self.state.streamer_blacklist.append(streamer)
+        self.state.save_streamer_blacklist()
+        msg.reply("Added {} to the blacklist.".format(" & ".join(args)))
+
+    @require_admin
+    @keyword('unblacklist')
+    def del_blacklist(self, irc_c, msg, trigger, args, kargs):
+        for streamer in [arg.lower() for arg in args]:
+            if streamer in self.state.streamer_blacklist:
+                self.state.streamer_blacklist.remove(streamer)
+        self.state.save_streamer_blacklist()
+        msg.reply("Removed {} from the blacklist.".format(" & ".join(args)))
+
+    @keyword('login')
+    def register(self, irc_c, msg, trigger, args, kargs):
+        login_cutoff = time.time() - self.login_timeout
+        if (msg.sender not in self.registered_users 
+                or self.registered_users[msg.sender] < login_cutoff):
+            irc_c.RAW('WHOIS {}'.format(msg.sender))
+        else:
+            msg.reply("Already logged in to the bot.")
 
     @keyword('streams')
     def streams(self, irc_c, msg, trigger, args, kargs):
