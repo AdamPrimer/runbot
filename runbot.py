@@ -21,11 +21,5 @@ from pyaib.ircbot import IrcBot
 import sys
 
 argv = sys.argv[1:]
-
-#Load 'botbot.conf' from the par
 bot = IrcBot(argv[0] if argv else 'runbot.conf')
-
-print("Config Dump: %s" % bot.config)
-
-#Bot Take over
 bot.run()
