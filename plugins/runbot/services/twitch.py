@@ -87,7 +87,7 @@ class TwitchService(RunBotService):
         whitelist_re = re.compile(whitelist, flags=re.IGNORECASE)
 
         allowed = [stream for stream in streams
-            if whitelist_re.search(stream['channel'].get('status', ''))]
+            if whitelist_re.search(stream['channel'].get('status', '') or '')]
 
         return allowed
 
@@ -99,7 +99,7 @@ class TwitchService(RunBotService):
         blacklist_re = re.compile(blacklist, flags=re.IGNORECASE)
 
         allowed = [stream for stream in streams
-            if not blacklist_re.search(stream['channel'].get('status', ''))]
+            if not blacklist_re.search(stream['channel'].get('status', '') or '')]
 
         return allowed
 
