@@ -38,6 +38,26 @@ class RunBotState:
     def streams(self):
         return self.filter_streams(self._streams)
 
+    def blacklist_streamer(self, streamer):
+        if not isinstance(streamer, list):
+            streamer = [streamer]
+            
+        for s in [s.lower() for s in streamer]:
+            if s not in self.state.streamer_blacklist:
+                self.state.streamer_blacklist.append(s)
+
+        self.state.save_streamer_blacklist()
+
+    def unblacklist_streamer(self, streamer):
+        if not isinstance(streamer, list):
+            streamer = [streamer]
+            
+        for s in [s.lower() for s in streamer]:
+            if s in self.state.streamer_blacklist:
+                self.state.streamer_blacklist.remove(s)
+
+        self.state.save_streamer_blacklist()
+
     def load_streamer_blacklist(self):
         if not os.path.exists(self.streamer_blacklist_file):
             return []

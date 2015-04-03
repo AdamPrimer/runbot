@@ -5,12 +5,12 @@ from plugins.runbot.state import RunBotState
 from pyaib.plugins import keyword, plugin_class, every, observe
 
 import time
+import functools 
 from parse import parse
 from collections import defaultdict
-import functools 
 
 @plugin_class
-class RunBot(object):
+class RunBot:
     def __init__(self, irc_c, config):
         self.state = RunBotState(
             games=config['games'],
@@ -41,13 +41,6 @@ class RunBot(object):
 
         print("RunBot Plugin Loaded!")
 
-    @observe('IRC_RAW_MSG')
-    def parse_whois(self, irc_c, msg):
-        login = parse(":{server} {} {} {nick} :is identified for this nick", msg)
-        if login:
-            data = login.named
-            self.registered_users[data['nick']] = time.time()
-
     def require_admin(wrapped):
         @functools.wraps(wrapped)
         def _wrapper(self, irc_c, msg, trigger, args, kwargs):
@@ -62,29 +55,23 @@ class RunBot(object):
                 return
 
             return wrapped(self, irc_c, msg, trigger, args, kwargs)
-        return _wrapper 
+        return _wrapper
 
     @require_admin
     @keyword('blacklist')
-    def add_blacklist(self, irc_c, msg, trigger, args, kargs):
+    def blacklist_streamer(self, irc_c, msg, trigger, args, kargs):
         if not args:
             msg.reply("Current Blacklist: {}".format(
                 ", ".join(self.state.streamer_blacklist)))
             return
             
-        for streamer in [arg.lower() for arg in args]:
-            if streamer not in self.state.streamer_blacklist:
-                self.state.streamer_blacklist.append(streamer)
-        self.state.save_streamer_blacklist()
+        self.state.blacklist_streamer(args)
         msg.reply("Added {} to the blacklist.".format(" & ".join(args)))
 
     @require_admin
     @keyword('unblacklist')
-    def del_blacklist(self, irc_c, msg, trigger, args, kargs):
-        for streamer in [arg.lower() for arg in args]:
-            if streamer in self.state.streamer_blacklist:
-                self.state.streamer_blacklist.remove(streamer)
-        self.state.save_streamer_blacklist()
+    def unblacklist_streamer(self, irc_c, msg, trigger, args, kargs):
+        self.state.unblacklist_streamer(args)
         msg.reply("Removed {} from the blacklist.".format(" & ".join(args)))
 
     @keyword('login')
@@ -114,11 +101,18 @@ class RunBot(object):
         if not self.state.streams:
             msg.reply("Unfortunately there are no streams currently live.")
 
+    @every(60, "update_streams")
+    def update_streams(self, irc_c, name):
+        self.state.update_streams(on_new_broadcast=self.broadcast_live)
+
     def broadcast_live(self, stream):
         for channel in self.irc_c.channels.channels:
             self.irc_c.PRIVMSG(channel, "NOW LIVE: ({}) {} | {}".format(
                 stream['viewers'], stream['url'], stream['title']))
 
-    @every(60, "update_streams")
-    def update_streams(self, irc_c, name):
-        self.state.update_streams(on_new_broadcast=self.broadcast_live)
+    @observe('IRC_RAW_MSG')
+    def parse_whois(self, irc_c, msg):
+        login = parse(":{server} {} {} {nick} :is identified for this nick", msg)
+        if login:
+            data = login.named
+            self.registered_users[data['nick']] = time.time()
