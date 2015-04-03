@@ -53,13 +53,6 @@ class HitboxService(RunBotService):
             streams.extend(self.get_all_streams_of_game(game))
         return streams
 
-    def get_all_streams_of_streamers(self, streamers):
-        url = self.endpoints['stream']
-        params = {
-            'channel': ",".join(streamers)
-        }
-        return self.get_all_streams_from_url(url, params)
-
     def get_all_streams_of_game(self, game):
         game_url = game.lower().replace(" ", "-").replace(".", "").replace(":", "")
         url = "{}/{}".format(self.endpoints['game'], game_url)
