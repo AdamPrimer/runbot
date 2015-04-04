@@ -163,12 +163,13 @@ class RunBotState:
             item = [item]
         
         results = []
-        for s in [s.lower() for s in item]:
+        for itm in item:
+            s = itm.lower()
             try:
                 idx = [c.lower() for c in container].index(s)
                 results.append(False)
             except ValueError as e:
-                container.append(s)
+                container.append(itm)
                 results.append(True)
         return results
 
