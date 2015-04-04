@@ -115,6 +115,7 @@ class RunBotState:
                     for stream in streams}
 
         if on_new_broadcast:
+            announcement_counter = 0
             announce_cutoff = time.time() - self.config.announce_limit
             for stream_id, stream in self.filter_streams(latest_streams).iteritems():
                 if (stream_id not in self.streams 
@@ -122,7 +123,12 @@ class RunBotState:
                             stream_id not in self.announcements
                             or self.announcements[stream_id] < announce_cutoff)):
 
-                    on_new_broadcast(stream)
+                    # Avoid spamming announcements if a source has issues and
+                    # releases a bunch of streams as online at once
+                    if announcement_counter < 8:
+                        on_new_broadcast(stream)
+                    announcement_counter += 1
+
                 self.announcements[stream_id] = time.time()
     
         self._streams = latest_streams
@@ -151,6 +157,7 @@ class RunBotState:
     def broadcast_live(self, stream):
         self.msg("NOW LIVE: ({}) {} | {}".format(
                 stream['viewers'], stream['url'], stream['title']))
+        time.sleep(0.2)
 
     def privmsg(self, to, message):
         self.irc_c.PRIVMSG(to, message)

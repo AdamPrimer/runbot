@@ -118,6 +118,8 @@ class RunBot:
             
         if channel.add_to_list(variable, args):
             msg.reply("Added {} to the {}.".format(" ".join(args), text))
+            if trigger in ["game"]:
+                channel.update_streams(on_live_broadcast=None)
         else:
             msg.reply("Failed to add {} to the {}.".format(" ".join(args), text))
 
