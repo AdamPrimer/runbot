@@ -56,6 +56,8 @@ class RunBot:
         self.cron_update_streams.__func__.__plugs__ = ('timers', 
             [('update_streams', self.config['update_interval'])])
 
+        self._whois_event_stack = defaultdict(list)
+
         print("RunBot Plugin Loaded!")
 
     def require_admin(wrapped):
@@ -71,7 +73,10 @@ class RunBot:
             login_cutoff = time.time() - self.config['login_timeout']
             if (msg.sender not in self.registered_users 
                     or self.registered_users[msg.sender] < login_cutoff):
-                msg.reply("Please !login")
+                irc_c.RAW('WHOIS {}'.format(msg.sender))
+                self._whois_event_stack[msg.sender].append(
+                    functools.partial(wrapped, self, irc_c, msg, trigger, args, kwargs)
+                )
                 return
 
             return wrapped(self, irc_c, msg, trigger, args, kwargs)
@@ -112,15 +117,6 @@ class RunBot:
     def updatestreams(self, irc_c, msg, trigger, args, kargs):
         channel = self.states[msg.channel]
         channel.update_streams(on_new_broadcast=channel.broadcast_live)
-            
-    @keyword('login')
-    def register(self, irc_c, msg, trigger, args, kargs):
-        login_cutoff = time.time() - self.config['login_timeout']
-        if (msg.sender not in self.registered_users 
-                or self.registered_users[msg.sender] < login_cutoff):
-            irc_c.RAW('WHOIS {}'.format(msg.sender))
-        else:
-            msg.reply("Already logged in to the bot.")
 
     @keyword('streams')
     def streams(self, irc_c, msg, trigger, args, kargs):
@@ -132,6 +128,9 @@ class RunBot:
         login = parse(":{server} {} {} {nick} :is identified for this nick", msg)
         if login:
             data = login.named
+            while self._whois_event_stack[data['nick']]:
+                func = self._whois_event_stack[data['nick']].pop(0)
+                func()
             self.registered_users[data['nick']] = time.time()
 
     @observe('IRC_ONCONNECT')
