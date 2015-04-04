@@ -155,8 +155,8 @@ class RunBotState:
             self.msg("Unfortunately there are no streams currently live.")
 
     def broadcast_live(self, stream):
-        self.msg("NOW LIVE: ({}) {} | {}".format(
-                stream['viewers'], stream['url'], stream['title']))
+        self.msg("NOW LIVE: {} | {}".format(
+                stream['url'], stream['title']))
         time.sleep(0.2)
 
     def privmsg(self, to, message):
