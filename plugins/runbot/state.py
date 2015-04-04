@@ -164,11 +164,12 @@ class RunBotState:
         
         results = []
         for s in [s.lower() for s in item]:
-            if s not in container:
+            try:
+                idx = [c.lower() for c in container].index(s)
+                results.append(False)
+            except ValueError as e:
                 container.append(s)
                 results.append(True)
-            else:
-                results.append(False)
         return results
 
     def _del_from_list(self, container, item):
@@ -177,9 +178,9 @@ class RunBotState:
         
         results = []
         for s in [s.lower() for s in item]:
-            if s in container:
-                container.remove(s)
-                results.append(True)
-            else:
+            try:
+                idx = [c.lower() for c in container].index(s)
+                container.pop(idx)
+            except ValueError as e:
                 results.append(False)
         return results
