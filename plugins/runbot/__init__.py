@@ -33,6 +33,9 @@ del_list_keywords = {
 }
 
 def case_insensitive_in(item, container):
+    if isinstance(container, dict):
+        container = container.keys()
+        
     try:
         s = item.lower()
         idx = [c.lower() for c in container].index(s)
@@ -92,8 +95,9 @@ class RunBot:
                     return
                     
                 login_cutoff = time.time() - self.config['login_timeout']
-                if (case_insensitive_in(msg.sender, self.registered_users) 
-                        or self.registered_users[msg.sender] < login_cutoff):
+                matched_name = case_insensitive_in(msg.sender, self.registered_users)
+                if (not matched_name
+                        or self.registered_users[matched_name] < login_cutoff):
                     irc_c.RAW('WHOIS {}'.format(msg.sender))
                     self._whois_event_stack[msg.sender].append(
                         functools.partial(wrapped, self, irc_c, msg, trigger, args, kwargs)
