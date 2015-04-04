@@ -40,7 +40,7 @@ class RunBot:
             channel = self.states[msg.channel]
 
             if (msg.sender.lower() not in channel.config.admin_users):
-                msg.reply("Sorry, {} is cannot perform that command.".format(msg.sender))
+                msg.reply("Sorry, {} cannot perform that command.".format(msg.sender))
                 return
                 
             login_cutoff = time.time() - self.config['login_timeout']
@@ -51,6 +51,46 @@ class RunBot:
 
             return wrapped(self, irc_c, msg, trigger, args, kwargs)
         return _wrapper
+
+    @require_admin
+    @keyword('keyword')
+    def whitelist_keyword(self, irc_c, msg, trigger, args, kargs):
+        channel = self.states[msg.channel]
+
+        if not args:
+            msg.reply("Current Keywords: {}".format(
+                ", ".join(channel.config.keyword_whitelist)))
+            return
+            
+        channel.whitelist_keyword(args)
+        msg.reply("Added {} to the keyword list.".format(" ".join(args)))
+
+    @require_admin
+    @keyword('banword')
+    def unwhitelist_keyword(self, irc_c, msg, trigger, args, kargs):
+        channel = self.states[msg.channel]
+        channel.unwhitelist_keyword(args)
+        msg.reply("Removed {} from the keyword list.".format(" ".join(args)))
+
+    @require_admin
+    @keyword('whitelist')
+    def whitelist_streamer(self, irc_c, msg, trigger, args, kargs):
+        channel = self.states[msg.channel]
+
+        if not args:
+            msg.reply("Current Whitelist: {}".format(
+                ", ".join(channel.config.streamer_whitelist)))
+            return
+            
+        channel.whitelist_streamer(args)
+        msg.reply("Added {} to the whitelist.".format(" & ".join(args)))
+
+    @require_admin
+    @keyword('unwhitelist')
+    def unwhitelist_streamer(self, irc_c, msg, trigger, args, kargs):
+        channel = self.states[msg.channel]
+        channel.unwhitelist_streamer(args)
+        msg.reply("Removed {} from the whitelist.".format(" & ".join(args)))
 
     @require_admin
     @keyword('blacklist')

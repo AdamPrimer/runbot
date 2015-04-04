@@ -33,6 +33,22 @@ class RunBotState:
     def streams(self):
         return self.filter_streams(self._streams)
 
+    def whitelist_keyword(self, keyword):
+        self._add_to_list(self.config.keyword_whitelist, " ".join(keyword))
+        self.config.save()
+
+    def unwhitelist_keyword(self, keyword):
+        self._del_from_list(self.config.keyword_whitelist, " ".join(keyword))
+        self.config.save()
+
+    def whitelist_streamer(self, streamer):
+        self._add_to_list(self.config.streamer_whitelist, streamer)
+        self.config.save()
+
+    def unwhitelist_streamer(self, streamer):
+        self._del_from_list(self.config.streamer_whitelist, streamer)
+        self.config.save()
+
     def blacklist_streamer(self, streamer):
         self._add_to_list(self.config.streamer_blacklist, streamer)
         self.config.save()
@@ -40,6 +56,15 @@ class RunBotState:
     def unblacklist_streamer(self, streamer):
         self._del_from_list(self.config.streamer_blacklist, streamer)
         self.config.save()
+
+    def apply_streamer_whitelist(self, streams, all_streams):
+        if not self.config.streamer_whitelist:
+            return streams
+
+        streams.update({stream_id: stream for stream_id, stream in all_streams.iteritems()
+            if stream['streamer'].lower() in self.config.streamer_whitelist})
+
+        return streams
 
     def apply_streamer_blacklist(self, streams):
         if not self.config.streamer_blacklist:
@@ -72,6 +97,7 @@ class RunBotState:
         streams = self.apply_keyword_whitelist(all_streams)
         streams = self.apply_keyword_blacklist(streams)
         streams = self.apply_streamer_blacklist(streams)
+        streams = self.apply_streamer_whitelist(streams, all_streams)
         return streams
 
     def update_streams(self, on_new_broadcast):

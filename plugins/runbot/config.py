@@ -17,7 +17,6 @@ class RunBotConfig:
             'keyword_blacklist': [],
             'keyword_whitelist': [],
             'services': ['twitch'],
-            'update_interval': 60,
             'streamer_blacklist': [],
             'streamer_whitelist': [],
         }
@@ -29,8 +28,6 @@ class RunBotConfig:
             self._config.update(yaml.safe_load(fp))
 
     def save(self):
-        print("Saving")
-        print(self._config)
         with open(os.path.join(self.folder, self.filename), 'w+') as fp:
             yaml.safe_dump(self._config, fp,
                 indent=4,
