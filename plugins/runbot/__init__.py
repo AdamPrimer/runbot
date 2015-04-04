@@ -4,6 +4,7 @@ from __future__ import (absolute_import, division, print_function,
 from plugins.runbot.state import RunBotState
 from pyaib.plugins import keyword, plugin_class, every, observe
 
+import yaml
 import time
 import functools 
 from parse import parse
@@ -12,43 +13,37 @@ from collections import defaultdict
 @plugin_class
 class RunBot:
     def __init__(self, irc_c, config):
-        self.state = RunBotState(
-            games=config['games'],
-            keyword_whitelist=config['keyword_whitelist'],
-            keyword_blacklist=config['keyword_blacklist'],
-            announce_limit=config['announce_limit'],
-            services=config['services'],
-            streamer_blacklist_file=config['streamer_blacklist_file'])
+        self.states = {}
 
-        self.display_cutoff = config['display_cutoff']
-        self.update_interval = config['update_interval']
-        self.login_timeout = config['login_timeout']
-        self.admin_users = config['admin_users']
+        with open(config['config'], 'r') as fp:
+            self.config = yaml.safe_load(fp)
+
+        # Initialize all the channels
+        for channel, config in self.config['channels'].iteritems():
+            self.states[channel] = RunBotState(irc_c, channel, config, config_folder=self.config['folder'])
         
         # Save the IRC context
         self.irc_c = irc_c
 
-        # Plugin is loaded before we are even live, so don't bother trying to
-        # display anything on the detection of new broadcasts
-        self.state.update_streams(on_new_broadcast=None)
+        self.registered_users = {}
 
         # Modify the @every decorator for the update_streams method, allows us
         # to configure this period via the config file.
-        self.update_streams.__func__.__plugs__ = ('timers', 
-            [('update_streams', self.update_interval)])
-
-        self.registered_users = {}
+        self.cron_update_streams.__func__.__plugs__ = ('timers', 
+            [('update_streams', self.config['update_interval'])])
 
         print("RunBot Plugin Loaded!")
 
     def require_admin(wrapped):
         @functools.wraps(wrapped)
         def _wrapper(self, irc_c, msg, trigger, args, kwargs):
-            if (msg.sender.lower() not in self.admin_users):
+            channel = self.states[msg.channel]
+
+            if (msg.sender.lower() not in channel.config.admin_users):
                 msg.reply("Sorry, {} is cannot perform that command.".format(msg.sender))
                 return
                 
-            login_cutoff = time.time() - self.login_timeout
+            login_cutoff = time.time() - self.config['login_timeout']
             if (msg.sender not in self.registered_users 
                     or self.registered_users[msg.sender] < login_cutoff):
                 msg.reply("Please !login")
@@ -60,23 +55,26 @@ class RunBot:
     @require_admin
     @keyword('blacklist')
     def blacklist_streamer(self, irc_c, msg, trigger, args, kargs):
+        channel = self.states[msg.channel]
+
         if not args:
             msg.reply("Current Blacklist: {}".format(
-                ", ".join(self.state.streamer_blacklist)))
+                ", ".join(channel.config.streamer_blacklist)))
             return
             
-        self.state.blacklist_streamer(args)
+        channel.blacklist_streamer(args)
         msg.reply("Added {} to the blacklist.".format(" & ".join(args)))
 
     @require_admin
     @keyword('unblacklist')
     def unblacklist_streamer(self, irc_c, msg, trigger, args, kargs):
-        self.state.unblacklist_streamer(args)
+        channel = self.states[msg.channel]
+        channel.unblacklist_streamer(args)
         msg.reply("Removed {} from the blacklist.".format(" & ".join(args)))
 
     @keyword('login')
     def register(self, irc_c, msg, trigger, args, kargs):
-        login_cutoff = time.time() - self.login_timeout
+        login_cutoff = time.time() - self.config['login_timeout']
         if (msg.sender not in self.registered_users 
                 or self.registered_users[msg.sender] < login_cutoff):
             irc_c.RAW('WHOIS {}'.format(msg.sender))
@@ -85,30 +83,8 @@ class RunBot:
 
     @keyword('streams')
     def streams(self, irc_c, msg, trigger, args, kargs):
-        # Sort streams by viewer count ascendingly
-        streams = sorted(self.state.streams.iteritems(), key=lambda x: x[1].get('viewers', 0))
-
-        for stream_id, stream in streams:
-            # Truncate the output to `display_cutoff` characters
-            title = stream['title']
-            output = "({}) {} | {}".format(
-                stream['viewers'], stream['url'], title)
-            if len(output) > self.display_cutoff:
-                output = output[:self.display_cutoff-3] + "..."
-
-            msg.reply(output)
-
-        if not self.state.streams:
-            msg.reply("Unfortunately there are no streams currently live.")
-
-    @every(60, "update_streams")
-    def update_streams(self, irc_c, name):
-        self.state.update_streams(on_new_broadcast=self.broadcast_live)
-
-    def broadcast_live(self, stream):
-        for channel in self.irc_c.channels.channels:
-            self.irc_c.PRIVMSG(channel, "NOW LIVE: ({}) {} | {}".format(
-                stream['viewers'], stream['url'], stream['title']))
+        channel = self.states[msg.channel]
+        channel.show_streams()
 
     @observe('IRC_RAW_MSG')
     def parse_whois(self, irc_c, msg):
@@ -116,3 +92,13 @@ class RunBot:
         if login:
             data = login.named
             self.registered_users[data['nick']] = time.time()
+
+    @observe('IRC_ONCONNECT')
+    def on_connect(self, irc_c):
+        for channel in self.states.keys():
+            irc_c.JOIN(channel)
+
+    @every(60, "update_streams")
+    def cron_update_streams(self, irc_c, name):
+        for channel in self.states.values():
+            channel.update_streams(on_new_broadcast=channel.broadcast_live)

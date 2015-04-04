@@ -4,94 +4,65 @@ from __future__ import (absolute_import, print_function, division,
 import os
 import re
 import time
+import yaml
 import requests
 
+from plugins.runbot.config import RunBotConfig
 from plugins.runbot.services import load_services, available_services
 
 class RunBotState:
-    def __init__(self, games=[], 
-            keyword_whitelist=[],
-            keyword_blacklist=[],
-            announce_limit=1800,
-            services=[],
-            streamer_blacklist_file="streamer_blacklist.txt"):
-        
-        self.games = games
-        self.keyword_whitelist = keyword_whitelist
-        self.keyword_blacklist = keyword_blacklist
-        self.announce_limit = announce_limit
+    def __init__(self, irc_c, channel, config_file, config_folder=""):
+        self.irc_c = irc_c
+        self.channel = channel
+        self.config = RunBotConfig(config_file, config_folder)
 
-        self.streamer_blacklist_file = streamer_blacklist_file
-        self.streamer_blacklist = self.load_streamer_blacklist()
-        self.streamer_whitelist = []
-
-        load_services(services)
+        load_services(self.config.services)
 
         self.services = {}
-        for service in services:
-            self.services[service] = available_services[service](self.games)
+        for service in self.config.services:
+            self.services[service] = available_services[service](self.config.games)
 
         self._streams = {}
         self.announcements = {}
+        
+        self.update_streams(on_new_broadcast=None)
+
+        print("Channel {} initialized.".format(self.channel))
     
     @property
     def streams(self):
         return self.filter_streams(self._streams)
 
     def blacklist_streamer(self, streamer):
-        if not isinstance(streamer, list):
-            streamer = [streamer]
-            
-        for s in [s.lower() for s in streamer]:
-            if s not in self.state.streamer_blacklist:
-                self.state.streamer_blacklist.append(s)
-
-        self.state.save_streamer_blacklist()
+        self._add_to_list(self.config.streamer_blacklist, streamer)
+        self.config.save()
 
     def unblacklist_streamer(self, streamer):
-        if not isinstance(streamer, list):
-            streamer = [streamer]
-            
-        for s in [s.lower() for s in streamer]:
-            if s in self.state.streamer_blacklist:
-                self.state.streamer_blacklist.remove(s)
-
-        self.state.save_streamer_blacklist()
-
-    def load_streamer_blacklist(self):
-        if not os.path.exists(self.streamer_blacklist_file):
-            return []
-        
-        with open(self.streamer_blacklist_file, 'r+') as fp:
-            return [line.strip() for line in fp.readlines()]
-
-    def save_streamer_blacklist(self):
-        with open(self.streamer_blacklist_file, 'w+') as fp:
-            for streamer in self.streamer_blacklist:
-                fp.write("{}\n".format(streamer))
+        self._del_from_list(self.config.streamer_blacklist, streamer)
+        self.config.save()
 
     def apply_streamer_blacklist(self, streams):
-        if not self.streamer_blacklist:
+        if not self.config.streamer_blacklist:
             return streams
 
         return {stream_id: stream for stream_id, stream in streams.iteritems()
-            if stream['streamer'].lower() not in self.streamer_blacklist}
+            if stream['streamer'].lower() not in self.config.streamer_blacklist}
 
     def apply_keyword_whitelist(self, streams):
-        if not self.keyword_whitelist:
+        if not self.config.keyword_whitelist:
             return streams
         
-        whitelist = '|'.join(re.escape(term) for term in self.keyword_whitelist)
+        whitelist = '|'.join(re.escape(term) for term in self.config.keyword_whitelist)
         whitelist_re = re.compile(whitelist, flags=re.IGNORECASE)
 
         return {stream_id: stream for stream_id, stream in streams.iteritems()
             if whitelist_re.search(stream['title'] or '')}
 
     def apply_keyword_blacklist(self, streams):
-        if not self.keyword_blacklist:
+        if not self.config.keyword_blacklist:
             return streams
         
-        blacklist = '|'.join(re.escape(term) for term in self.keyword_blacklist)
+        blacklist = '|'.join(re.escape(term) for term in self.config.keyword_blacklist)
         blacklist_re = re.compile(blacklist, flags=re.IGNORECASE)
 
         return {stream_id: stream for stream_id, stream in streams.iteritems()
@@ -118,7 +89,7 @@ class RunBotState:
                     for stream in streams}
 
         if on_new_broadcast:
-            announce_cutoff = time.time() - self.announce_limit
+            announce_cutoff = time.time() - self.config.announce_limit
             for stream_id, stream in self.filter_streams(latest_streams).iteritems():
                 if (stream_id not in self.streams 
                         and (
@@ -129,3 +100,53 @@ class RunBotState:
                 self.announcements[stream_id] = time.time()
     
         self._streams = latest_streams
+
+    def show_streams(self):
+        # Sort streams by viewer count ascendingly
+        streams = sorted(self.streams.iteritems(), key=lambda x: x[1].get('viewers', 0))
+
+        for stream_id, stream in streams:
+            # Truncate the output to `display_cutoff` characters
+            title = stream['title']
+            output = "({}) {} | {}".format(
+                stream['viewers'], stream['url'], title)
+            if len(output) > self.config.display_cutoff:
+                output = output[:self.config.display_cutoff-3] + "..."
+
+            self.msg(output)
+
+        if not self.streams:
+            self.msg("Unfortunately there are no streams currently live.")
+
+    def broadcast_live(self, stream):
+        self.msg("NOW LIVE: ({}) {} | {}".format(
+                stream['viewers'], stream['url'], stream['title']))
+
+    def msg(self, message):
+        self.irc_c.PRIVMSG(self.channel, message)
+
+    def _add_to_list(self, container, item):
+        if not isinstance(item, list):
+            item = [item]
+        
+        results = []
+        for s in [s.lower() for s in item]:
+            if s not in container:
+                container.append(s)
+                results.append(True)
+            else:
+                results.append(False)
+        return results
+
+    def _del_from_list(self, container, item):
+        if not isinstance(item, list):
+            item = [item]
+        
+        results = []
+        for s in [s.lower() for s in item]:
+            if s in container:
+                container.remove(s)
+                results.append(True)
+            else:
+                results.append(False)
+        return results

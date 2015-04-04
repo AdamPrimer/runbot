@@ -18,8 +18,19 @@ from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 
 from pyaib.ircbot import IrcBot
+from pyaib import irc
+from pyaib.components import ComponentManager
+
 import sys
+import yaml
 
 argv = sys.argv[1:]
-bot = IrcBot(argv[0] if argv else 'runbot.conf')
+bot = IrcBot(argv[0] if argv else 'core.conf')
+
+runbot_config_file = bot.irc_c.config['plugin']['runbot']['config']
+with open(runbot_config_file, 'r') as fp:
+    runbot_config = yaml.safe_load(fp)
+
+bot.irc_c.config['irc'].update(runbot_config['irc'])
+
 bot.run()
