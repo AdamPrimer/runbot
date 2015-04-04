@@ -10,7 +10,7 @@ class RunBotConfig:
         self.folder = folder
         
         self._config = {
-            'admin_users': ['adamprimer'],
+            'admin_users': [],
             'announce_limit': 1800,
             'display_cutoff': 80,
             'games': [],

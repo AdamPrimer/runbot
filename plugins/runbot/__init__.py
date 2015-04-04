@@ -36,11 +36,14 @@ class RunBot:
         with open(config['config'], 'r') as fp:
             self.config = yaml.safe_load(fp)
 
+        self.superadmins = [sa.lower()
+            for sa in self.config.get('superadmins', [])]
+
         # Initialize all the channels
         for channel, config in self.config['channels'].iteritems():
             self.states[channel] = RunBotState(irc_c, channel, 
                     config,
-                    superadmins=self.config.get('superadmins', []),
+                    superadmins=superadmins,
                     config_folder=self.config['folder'])
         
         # Save the IRC context
@@ -60,7 +63,8 @@ class RunBot:
         def _wrapper(self, irc_c, msg, trigger, args, kwargs):
             channel = self.states[msg.channel]
 
-            if (msg.sender.lower() not in channel.config.admin_users):
+            if (msg.sender.lower() not in channel.config.admin_users)
+                    and (msg.sender.lower() not in channel.superadmins):
                 msg.reply("Sorry, {} cannot perform that command.".format(msg.sender))
                 return
                 

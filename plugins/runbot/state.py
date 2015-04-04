@@ -15,7 +15,7 @@ class RunBotState:
         self.irc_c = irc_c
         self.channel = channel
         self.config = RunBotConfig(config_file, config_folder)
-        self.superadmins = [sa.lower() for sa in superadmins]
+        self.superadmins = superadmins
 
         load_services(self.config.services)
 
