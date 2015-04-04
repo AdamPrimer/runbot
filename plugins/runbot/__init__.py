@@ -33,6 +33,8 @@ class RunBot:
     def __init__(self, irc_c, config):
         self.states = {}
 
+        self.config_file = config['config']
+
         with open(config['config'], 'r') as fp:
             self.config = yaml.safe_load(fp)
 
@@ -66,7 +68,28 @@ class RunBot:
             channel = self.states[msg.channel]
 
             if (msg.sender.lower() not in channel.config.admin_users
-                    and msg.sender.lower() not in channel.superadmins):
+                    and msg.sender.lower() not in self.superadmins):
+                msg.reply("Sorry, {} cannot perform that command.".format(msg.sender))
+                return
+                
+            login_cutoff = time.time() - self.config['login_timeout']
+            if (msg.sender not in self.registered_users 
+                    or self.registered_users[msg.sender] < login_cutoff):
+                irc_c.RAW('WHOIS {}'.format(msg.sender))
+                self._whois_event_stack[msg.sender].append(
+                    functools.partial(wrapped, self, irc_c, msg, trigger, args, kwargs)
+                )
+                return
+
+            return wrapped(self, irc_c, msg, trigger, args, kwargs)
+        return _wrapper
+
+    def require_super(wrapped):
+        @functools.wraps(wrapped)
+        def _wrapper(self, irc_c, msg, trigger, args, kwargs):
+            channel = self.states[msg.channel]
+
+            if (msg.sender.lower() not in self.superadmins):
                 msg.reply("Sorry, {} cannot perform that command.".format(msg.sender))
                 return
                 
@@ -117,6 +140,56 @@ class RunBot:
     def updatestreams(self, irc_c, msg, trigger, args, kargs):
         channel = self.states[msg.channel]
         channel.update_streams(on_new_broadcast=channel.broadcast_live)
+
+    @require_super
+    @keyword('channel_join')
+    def join_channel(self, irc_c, msg, trigger, args, kargs):
+        channel = args[0]
+        if channel not in self.config['channels']:
+            msg.reply("Please !channel_add {} first.".format(channel))
+            return
+        
+        self.states[channel] = RunBotState(irc_c, channel, 
+                config_file=self.config['channels'][channel],
+                superadmins=self.superadmins,
+                config_folder=self.config['folder'])
+        irc_c.JOIN(channel)
+
+    @require_admin
+    @keyword('channel_part')
+    def part_channel(self, irc_c, msg, trigger, args, kargs):
+        channel = msg.channel
+        del self.states[channel]
+        irc_c.PART(channel, "RunBot bids you adieu.")
+
+    @require_super
+    @keyword('channel_add')
+    def add_channel(self, irc_c, msg, trigger, args, kargs):
+        if not args:
+            msg.reply('RunBot is currently in: {}'.format(
+                    ", ".join(self.config['channels'].keys())))
+            return
+
+        channel = args[0]
+        if channel not in self.config['channels']:
+            self.config['channels'][channel] = "runbot_{}.conf".format(channel[1:])
+
+        with open(self.config_file, 'w+') as fp:
+            yaml.safe_dump(self.config, fp)
+
+        msg.reply("Added {} to the RunBot channel list".format(channel))
+
+    @require_super
+    @keyword('channel_delete')
+    def del_channel(self, irc_c, msg, trigger, args, kargs):
+        channel = args[0]
+        if channel in self.config['channels']:
+            del self.config['channels'][channel]
+
+        with open(self.config_file, 'w+') as fp:
+            yaml.safe_dump(self.config, fp)
+
+        msg.reply("Removed {} from the RunBot channel list".format(channel))
 
     @keyword('streams')
     def streams(self, irc_c, msg, trigger, args, kargs):

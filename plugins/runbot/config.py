@@ -25,7 +25,7 @@ class RunBotConfig:
     
     def load(self):
         filename = os.path.join(self.folder, self.filename)
-        if os.path.exists(filename):
+        if os.path.exists(filename) and os.path.isfile(filename):
             with open(filename, 'r+') as fp:
                 self._config.update(yaml.safe_load(fp))
 
