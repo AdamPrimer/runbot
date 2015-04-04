@@ -12,9 +12,13 @@ from collections import defaultdict
 
 add_list_keywords = {
     'admin': ('admin_users', 'administrators'),
+    'admins': ('admin_users', 'administrators'),
     'game':  ('games', 'games list'),
+    'games':  ('games', 'games list'),
     'banword': ('keyword_blacklist', 'banned words list'),
+    'banwords': ('keyword_blacklist', 'banned words list'),
     'keyword': ('keyword_whitelist', 'keywords list'),
+    'keywords': ('keyword_whitelist', 'keywords list'),
     'whitelist': ('streamer_whitelist', 'whitelist'),
     'blacklist': ('streamer_blacklist', 'blacklist'),
 }
@@ -28,6 +32,14 @@ del_list_keywords = {
     'unblacklist': ('streamer_blacklist', 'blacklist'),
 }
 
+def case_insensitive_in(item, container):
+    try:
+        s = item.lower()
+        idx = [c.lower() for c in container].index(s)
+    except ValueError as e:
+        return False
+    return container[idx]
+
 @plugin_class
 class RunBot:
     def __init__(self, irc_c, config):
@@ -38,8 +50,7 @@ class RunBot:
         with open(config['config'], 'r') as fp:
             self.config = yaml.safe_load(fp)
 
-        self.superadmins = [sa.lower()
-            for sa in self.config.get('superadmins', [])]
+        self.superadmins = self.config.get('superadmins', [])
 
         # Initialize all the channels
         for channel, config in self.config['channels'].iteritems():
@@ -60,27 +71,34 @@ class RunBot:
 
         self._whois_event_stack = defaultdict(list)
 
+        self._commands = ["streams"]
+        self._commands.extend(sorted(add_list_keywords.keys()))
+        self._commands.extend(sorted(del_list_keywords.keys()))
+        self._commands.append("channel_part")
+        self._commands = ["!{}".format(k) for k in self._commands]
+
         print("RunBot Plugin Loaded!")
 
     def require_admin(wrapped):
         @functools.wraps(wrapped)
         def _wrapper(self, irc_c, msg, trigger, args, kwargs):
-            channel = self.states[msg.channel]
+            # Only require admin to perform actions, not to simply list things
+            if args:
+                channel = self.states[msg.channel]
 
-            if (msg.sender.lower() not in channel.config.admin_users
-                    and msg.sender.lower() not in self.superadmins):
-                msg.reply("Sorry, {} cannot perform that command.".format(msg.sender))
-                return
-                
-            login_cutoff = time.time() - self.config['login_timeout']
-            if (msg.sender not in self.registered_users 
-                    or self.registered_users[msg.sender] < login_cutoff):
-                irc_c.RAW('WHOIS {}'.format(msg.sender))
-                self._whois_event_stack[msg.sender].append(
-                    functools.partial(wrapped, self, irc_c, msg, trigger, args, kwargs)
-                )
-                return
-
+                if (not case_insensitive_in(msg.sender, channel.config.admin_users)
+                        and not case_insensitive_in(msg.sender, self.superadmins)):
+                    msg.reply("Sorry, {} cannot perform that command.".format(msg.sender))
+                    return
+                    
+                login_cutoff = time.time() - self.config['login_timeout']
+                if (case_insensitive_in(msg.sender, self.registered_users) 
+                        or self.registered_users[msg.sender] < login_cutoff):
+                    irc_c.RAW('WHOIS {}'.format(msg.sender))
+                    self._whois_event_stack[msg.sender].append(
+                        functools.partial(wrapped, self, irc_c, msg, trigger, args, kwargs)
+                    )
+                    return
             return wrapped(self, irc_c, msg, trigger, args, kwargs)
         return _wrapper
 
@@ -89,7 +107,7 @@ class RunBot:
         def _wrapper(self, irc_c, msg, trigger, args, kwargs):
             channel = self.states[msg.channel]
 
-            if (msg.sender.lower() not in self.superadmins):
+            if not case_insensitive_in(msg.sender, self.superadmins):
                 msg.reply("Sorry, {} cannot perform that command.".format(msg.sender))
                 return
                 
@@ -118,7 +136,7 @@ class RunBot:
             
         if channel.add_to_list(variable, args):
             msg.reply("Added {} to the {}.".format(" ".join(args), text))
-            if trigger in ["game"]:
+            if variable in ["games"]:
                 channel.update_streams(on_new_broadcast=None)
         else:
             msg.reply("Failed to add {} to the {}.".format(" ".join(args), text))
@@ -137,9 +155,14 @@ class RunBot:
         else:
             msg.reply("Failed to remove {} from the {}.".format(" ".join(args), text))
 
+    @keyword('commands')
+    def commands(self, irc_c, msg, trigger, args, kargs):
+        print("Commands")
+        msg.reply("Commands: {}".format(", ".join(self._commands)))
+
     @require_admin
-    @keyword('updatestreams')
-    def updatestreams(self, irc_c, msg, trigger, args, kargs):
+    @keyword('update_streams')
+    def update_streams(self, irc_c, msg, trigger, args, kargs):
         channel = self.states[msg.channel]
         channel.update_streams(on_new_broadcast=channel.broadcast_live)
 
