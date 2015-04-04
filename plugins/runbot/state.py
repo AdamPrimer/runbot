@@ -11,10 +11,11 @@ from plugins.runbot.config import RunBotConfig
 from plugins.runbot.services import load_services, available_services
 
 class RunBotState:
-    def __init__(self, irc_c, channel, config_file, config_folder=""):
+    def __init__(self, irc_c, channel, config_file, superadmins=None, config_folder=""):
         self.irc_c = irc_c
         self.channel = channel
         self.config = RunBotConfig(config_file, config_folder)
+        self.superadmins = [sa.lower() for sa in superadmins]
 
         load_services(self.config.services)
 
@@ -24,6 +25,8 @@ class RunBotState:
 
         self._streams = {}
         self.announcements = {}
+
+        self.stream_spam_limit = 8
         
         self.update_streams(on_new_broadcast=None)
 
@@ -33,29 +36,26 @@ class RunBotState:
     def streams(self):
         return self.filter_streams(self._streams)
 
-    def whitelist_keyword(self, keyword):
-        self._add_to_list(self.config.keyword_whitelist, " ".join(keyword))
+    def add_to_list(self, variable, keyword):
+        if variable in ['keyword_whitelist', 'games']:
+            self._add_to_list(self.config.__getattr__(variable), " ".join(keyword))
+        else:
+            self._add_to_list(self.config.__getattr__(variable), keyword)
         self.config.save()
+        return True
 
-    def unwhitelist_keyword(self, keyword):
-        self._del_from_list(self.config.keyword_whitelist, " ".join(keyword))
+    def del_from_list(self, variable, keyword):
+        if variable in ['keyword_blacklist', 'games']:
+            self._del_from_list(self.config.__getattr__(variable), " ".join(keyword))
+        elif variable in ['admin_users']:
+            for user in keyword:
+                if user.lower() in self.superadmins:
+                    return False
+            self._del_from_list(self.config.__getattr__(variable), keyword)
+        else:
+            self._del_from_list(self.config.__getattr__(variable), keyword)
         self.config.save()
-
-    def whitelist_streamer(self, streamer):
-        self._add_to_list(self.config.streamer_whitelist, streamer)
-        self.config.save()
-
-    def unwhitelist_streamer(self, streamer):
-        self._del_from_list(self.config.streamer_whitelist, streamer)
-        self.config.save()
-
-    def blacklist_streamer(self, streamer):
-        self._add_to_list(self.config.streamer_blacklist, streamer)
-        self.config.save()
-
-    def unblacklist_streamer(self, streamer):
-        self._del_from_list(self.config.streamer_blacklist, streamer)
-        self.config.save()
+        return True
 
     def apply_streamer_whitelist(self, streams, all_streams):
         if not self.config.streamer_whitelist:
@@ -131,6 +131,9 @@ class RunBotState:
         # Sort streams by viewer count ascendingly
         streams = sorted(self.streams.iteritems(), key=lambda x: x[1].get('viewers', 0))
 
+        if len(streams) > self.stream_spam_limit:
+            streams = streams[-self.stream_spam_limit:]
+
         for stream_id, stream in streams:
             # Truncate the output to `display_cutoff` characters
             title = stream['title']
@@ -140,6 +143,7 @@ class RunBotState:
                 output = output[:self.config.display_cutoff-3] + "..."
 
             self.msg(output)
+            time.sleep(0.2)
 
         if not self.streams:
             self.msg("Unfortunately there are no streams currently live.")
@@ -147,6 +151,9 @@ class RunBotState:
     def broadcast_live(self, stream):
         self.msg("NOW LIVE: ({}) {} | {}".format(
                 stream['viewers'], stream['url'], stream['title']))
+
+    def privmsg(self, to, message):
+        self.irc_c.PRIVMSG(to, message)
 
     def msg(self, message):
         self.irc_c.PRIVMSG(self.channel, message)

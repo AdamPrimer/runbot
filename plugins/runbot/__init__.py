@@ -10,6 +10,24 @@ import functools
 from parse import parse
 from collections import defaultdict
 
+add_list_keywords = {
+    'admin': ('admin_users', 'administrators'),
+    'game':  ('games', 'games list'),
+    'banword': ('keyword_blacklist', 'banned words list'),
+    'keyword': ('keyword_whitelist', 'keywords list'),
+    'whitelist': ('streamer_whitelist', 'whitelist'),
+    'blacklist': ('streamer_blacklist', 'blacklist'),
+}
+
+del_list_keywords = {
+    'unadmin': ('admin_users', 'administrators'),
+    'ungame':   ('games', 'games list'),
+    'unbanword': ('keyword_blacklist', 'banned words list'),
+    'unkeyword': ('keyword_whitelist', 'keywords list'),
+    'unwhitelist': ('streamer_whitelist', 'whitelist'),
+    'unblacklist': ('streamer_blacklist', 'blacklist'),
+}
+
 @plugin_class
 class RunBot:
     def __init__(self, irc_c, config):
@@ -20,7 +38,10 @@ class RunBot:
 
         # Initialize all the channels
         for channel, config in self.config['channels'].iteritems():
-            self.states[channel] = RunBotState(irc_c, channel, config, config_folder=self.config['folder'])
+            self.states[channel] = RunBotState(irc_c, channel, 
+                    config,
+                    superadmins=self.config.get('superadmins', []),
+                    config_folder=self.config['folder'])
         
         # Save the IRC context
         self.irc_c = irc_c
@@ -53,65 +74,41 @@ class RunBot:
         return _wrapper
 
     @require_admin
-    @keyword('keyword')
-    def whitelist_keyword(self, irc_c, msg, trigger, args, kargs):
+    @keyword(*add_list_keywords.keys())
+    def _add_to_list(self, irc_c, msg, trigger, args, kargs):
+        (variable, text) = add_list_keywords[trigger]
         channel = self.states[msg.channel]
 
         if not args:
-            msg.reply("Current Keywords: {}".format(
-                ", ".join(channel.config.keyword_whitelist)))
+            msg.reply("Current {}: {}".format(text,
+                ", ".join(channel.config.__getattr__(variable))))
             return
             
-        channel.whitelist_keyword(args)
-        msg.reply("Added {} to the keyword list.".format(" ".join(args)))
+        if channel.add_to_list(variable, args):
+            msg.reply("Added {} to the {}.".format(" ".join(args), text))
+        else:
+            msg.reply("Failed to add {} to the {}.".format(" ".join(args), text))
 
     @require_admin
-    @keyword('banword')
-    def unwhitelist_keyword(self, irc_c, msg, trigger, args, kargs):
+    @keyword(*del_list_keywords.keys())
+    def _del_from_list(self, irc_c, msg, trigger, args, kargs):
+        (variable, text) = del_list_keywords[trigger]
+
         channel = self.states[msg.channel]
-        channel.unwhitelist_keyword(args)
-        msg.reply("Removed {} from the keyword list.".format(" ".join(args)))
+        if channel.del_from_list(variable, args):
+            if trigger in ['unwhitelist', 'unblacklist']:
+                msg.reply("Removed {} from the {}.".format(" & ".join(args), text))
+            else:
+                msg.reply("Removed {} from the {}.".format(" ".join(args), text))
+        else:
+            msg.reply("Failed to remove {} from the {}.".format(" ".join(args), text))
 
     @require_admin
-    @keyword('whitelist')
-    def whitelist_streamer(self, irc_c, msg, trigger, args, kargs):
+    @keyword('updatestreams')
+    def updatestreams(self, irc_c, msg, trigger, args, kargs):
         channel = self.states[msg.channel]
-
-        if not args:
-            msg.reply("Current Whitelist: {}".format(
-                ", ".join(channel.config.streamer_whitelist)))
-            return
+        channel.update_streams(on_new_broadcast=channel.broadcast_live)
             
-        channel.whitelist_streamer(args)
-        msg.reply("Added {} to the whitelist.".format(" & ".join(args)))
-
-    @require_admin
-    @keyword('unwhitelist')
-    def unwhitelist_streamer(self, irc_c, msg, trigger, args, kargs):
-        channel = self.states[msg.channel]
-        channel.unwhitelist_streamer(args)
-        msg.reply("Removed {} from the whitelist.".format(" & ".join(args)))
-
-    @require_admin
-    @keyword('blacklist')
-    def blacklist_streamer(self, irc_c, msg, trigger, args, kargs):
-        channel = self.states[msg.channel]
-
-        if not args:
-            msg.reply("Current Blacklist: {}".format(
-                ", ".join(channel.config.streamer_blacklist)))
-            return
-            
-        channel.blacklist_streamer(args)
-        msg.reply("Added {} to the blacklist.".format(" & ".join(args)))
-
-    @require_admin
-    @keyword('unblacklist')
-    def unblacklist_streamer(self, irc_c, msg, trigger, args, kargs):
-        channel = self.states[msg.channel]
-        channel.unblacklist_streamer(args)
-        msg.reply("Removed {} from the blacklist.".format(" & ".join(args)))
-
     @keyword('login')
     def register(self, irc_c, msg, trigger, args, kargs):
         login_cutoff = time.time() - self.config['login_timeout']

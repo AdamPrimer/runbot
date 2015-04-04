@@ -10,7 +10,7 @@ class RunBotConfig:
         self.folder = folder
         
         self._config = {
-            'admin_users': 'adamprimer',
+            'admin_users': ['adamprimer'],
             'announce_limit': 1800,
             'display_cutoff': 80,
             'games': [],
@@ -24,8 +24,10 @@ class RunBotConfig:
         self.load()
     
     def load(self):
-        with open(os.path.join(self.folder, self.filename), 'r+') as fp:
-            self._config.update(yaml.safe_load(fp))
+        filename = os.path.join(self.folder, self.filename)
+        if os.path.exists(filename):
+            with open(filename, 'r+') as fp:
+                self._config.update(yaml.safe_load(fp))
 
     def save(self):
         with open(os.path.join(self.folder, self.filename), 'w+') as fp:
