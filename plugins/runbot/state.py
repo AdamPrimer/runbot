@@ -10,6 +10,17 @@ import requests
 from plugins.runbot.config import RunBotConfig
 from plugins.runbot.services import load_services, available_services
 
+def case_insensitive_in(item, container):
+    if isinstance(container, dict):
+        container = container.keys()
+        
+    try:
+        s = item.lower()
+        idx = [c.lower() for c in container].index(s)
+    except ValueError as e:
+        return False
+    return container[idx]
+
 class RunBotState:
     def __init__(self, irc_c, channel, config_file, superadmins=None, config_folder=""):
         self.irc_c = irc_c
@@ -62,7 +73,7 @@ class RunBotState:
             return streams
 
         streams.update({stream_id: stream for stream_id, stream in all_streams.iteritems()
-            if stream['streamer'].lower() in self.config.streamer_whitelist})
+            if case_insensitive_in(stream['streamer'], self.config.streamer_whitelist)})
 
         return streams
 
@@ -71,7 +82,7 @@ class RunBotState:
             return streams
 
         return {stream_id: stream for stream_id, stream in streams.iteritems()
-            if stream['streamer'].lower() not in self.config.streamer_blacklist}
+            if not case_insensitive_in(stream['streamer'], self.config.streamer_blacklist)}
 
     def apply_keyword_whitelist(self, streams):
         if not self.config.keyword_whitelist:
