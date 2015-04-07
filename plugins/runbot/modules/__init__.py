@@ -141,3 +141,7 @@ class RunBotModule(object):
                     if obs._thing == function:
                         self.irc_c.triggers(cmd).unobserve(obs)
                         print("Unobserving", cmd, obs)
+
+        for (name, function, seconds) in self._crons:
+            self.irc_c.timers.clear(name, function)
+            print("Unhooking Cron", name, function)
