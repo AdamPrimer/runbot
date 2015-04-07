@@ -106,3 +106,4 @@ Create `yourservice.py` in `/plugins/runbot/modules/streams/services`
 - [streams] [hitbox] Update the Hitbox.tv service to work with the new module system.
 - [modules] Make the decorators nicer
 - [modules] Moderator/Admin hierarchy rather than all admins being equal
+- [modules] Properly unhook crons

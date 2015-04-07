@@ -61,12 +61,21 @@ class RecordsModule(RunBotModule):
         for game, categories in data.iteritems():
             for category, record in categories.iteritems():
                 if not cate or category.lower() == cate.lower():
-                    records.append("{}: {} ({}) {}".format(
-                        category, 
-                        self.format_seconds(int(record['time'])), 
-                        record['player'],
-                        self.format_timestamp(int(record['date']))
-                    ))
+                    if not kargs.get('video', None) or not record.get('video', None):
+                        records.append("{}: {} ({}) {}".format(
+                            category,
+                            self.format_seconds(int(record['time'])),
+                            record['player'],
+                            self.format_timestamp(int(record['date']))
+                        ))
+                    else:
+                        records.append("{}: {} ({}) {} - {}".format(
+                            category,
+                            self.format_seconds(int(record['time'])),
+                            record['player'],
+                            self.format_timestamp(int(record['date'])),
+                            record['video']
+                        ))
         
             if len(records) > 8:
                 msg.reply("Too many categories to display all: {}".format(
