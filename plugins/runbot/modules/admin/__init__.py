@@ -2,7 +2,7 @@ from __future__ import (absolute_import, print_function, division,
                         unicode_literals)
 import yaml
 
-from plugins.runbot.state import RunBotChannel
+from plugins.runbot.channel import RunBotChannel
 from plugins.runbot.modules import (
     RunBotModule,
     module_class,
