@@ -10,23 +10,59 @@
 
 See `runbot.conf`
 
-## Adding a new service ##
+Advanced users also see: `core.conf`
 
-1. Create `yourservice.py` in `/plugins/runbot/services`
-    a. See `/plugins/runbot/services/service.py` for the interface.
-    b. See `/plugins/runbot/services/twitch.py` for an example.
-2. Modify `runbot.conf` to add `yourservice` to the list of services
+## Adding a new module ##
 
-## New service template ##
+1. Create the directory `yourmodule` in `/plugins/runbot/modules/`
+2. Create `__init__.py` in the directory.
+3. Run the command `!rb_module your_module` in the channel to load the module
+
+## New module template ##
 
     from __future__ import (absolute_import, print_function, division,
                             unicode_literals)
+    from plugins.runbot.modules import (
+        RunBotModule,
+        module_class,
+        require_admin
+    )
 
-    import re
-    import requests
+    @module_class
+    class YourModule(RunBotModule):
+        def __init__(self, runbot, irc_c, channel, config):
+            super(YourModule, self).__init__(runbot, irc_c, channel, config)
+            
+            self.register_command('your_command', self.cmd_your_command, channels=[self.channel])
+            self.register_command('your_admin_command', self.cmd_your_admin_command, channels=[self.channel])
 
-    from plugins.runbot.services import service_class
-    from plugins.runbot.services.service import RunBotService
+            print("[RunBot] [{}] Your Module loaded.".format(self.channel))
+
+        def cmd_your_command(self, irc_c, msg, trigger, args, kargs):
+            msg.reply("Your Command Here!")
+
+        @require_admin
+        def cmd_your_admin_command(self, irc_c, msg, trigger, args, kargs):
+            if not args:
+                msg.reply(self.config.your_config_variable))
+                return
+
+            value = " ".join(args)
+            self.config.your_config_variable = value
+            self.config.save()
+
+## Adding a new streaming service ##
+
+Create `yourservice.py` in `/plugins/runbot/modules/streams/services`
+    a. See `/plugins/runbot/services/service.py` for the interface.
+    b. See `/plugins/runbot/services/twitch.py` for an example.
+
+## New streaming service template ##
+
+    from __future__ import (absolute_import, print_function, division,
+                            unicode_literals)
+    from plugins.runbot.modules.streams.services import service_class
+    from plugins.runbot.modules.streams.services.service import RunBotService
 
     @service_class
     class YourService(RunBotService):
@@ -61,3 +97,8 @@ See `runbot.conf`
                 underlying API.
             '''
             pass
+
+## TODO ##
+
+- [streams] Add commands to add/remove streaming modules.
+- [streams] [hitbox] Update the hitbox service to work with the new module system.
