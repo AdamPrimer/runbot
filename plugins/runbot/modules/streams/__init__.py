@@ -56,7 +56,7 @@ class StreamsModule(RunBotModule):
         }
 
         for key, val in self.default_config.iteritems():
-            if not self.config.__getattr__(key):
+            if self.config.__getattr__(key) == None:
                 self.config.__setattr__(key, val)
 
         load_services(self.config.services)
@@ -74,6 +74,8 @@ class StreamsModule(RunBotModule):
 
         self.register_command('update_streams', self.cmd_update_streams, channels=[self.channel])
         self.register_command('streams',        self.cmd_streams, channels=[self.channel])
+        self.register_command('rb_service',     self.cmd_add_service, channels=[self.channel])
+        self.register_command('rb_unservice',   self.cmd_del_service, channels=[self.channel])
 
         for keyword, args in add_list_keywords.iteritems():
             self.register_command(keyword, self.cmd_add_item_to_list, channels=[self.channel])
@@ -84,6 +86,53 @@ class StreamsModule(RunBotModule):
         self.register_cron('update_streams', self.cron_update_streams, self.runbot.config['update_interval'])
 
         print("[RunBot] [{}] Streams Module loaded.".format(self.channel))
+
+    @require_admin
+    def cmd_add_service(self, irc_c, msg, trigger, args, kargs):
+        if not args:
+            msg.reply("Currently loaded services: {}".format(", ".join(self.config.services)))
+            return
+
+        service = args[0]
+
+        if service in self.services:
+            msg.reply("Service {} is already loaded.".format(service))
+            return
+
+        self.config.list_add('services', service)
+
+        load_services(self.config.services)
+
+        if service not in available_services:
+            msg.reply("Service {} is not available to be loaded.".format(service))
+            return
+
+        self.services[service] = available_services[service](self.config.games)
+        self.config.save()
+
+        self.update_streams(on_new_broadcast=None)
+
+        msg.reply("Loaded the {} service.".format(service))
+
+    @require_admin
+    def cmd_del_service(self, irc_c, msg, trigger, args, kargs):
+        if not args:
+            return
+
+        service = args[0]
+
+        if service not in self.services:
+            msg.reply("Service {} not currently loaded.".format(service))
+            return
+
+        del self.services[service]
+
+        self.config.list_rm('services', service)
+        self.config.save()
+
+        self.update_streams(on_new_broadcast=None)
+
+        msg.reply("Removed the {} service.".format(service))
 
     @require_admin
     def cmd_add_item_to_list(self, irc_c, msg, trigger, args, kargs):

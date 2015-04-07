@@ -100,7 +100,6 @@ Create `yourservice.py` in `/plugins/runbot/modules/streams/services`
 
 ## TODO ##
 
-- [streams] Add commands to add/remove streaming modules.
 - [streams] Allow blacklisting on a "timeout" so that bans wear off
   automatically after a specified period.
 - [streams] [hitbox] Update the Hitbox.tv service to work with the new module system.
