@@ -102,6 +102,5 @@ Create `yourservice.py` in `/plugins/runbot/modules/streams/services`
 
 - [streams] Allow blacklisting on a "timeout" so that bans wear off
   automatically after a specified period.
-- [streams] [hitbox] Update the Hitbox.tv service to work with the new module system.
 - [modules] Make the decorators nicer
 - [modules] Moderator/Admin hierarchy rather than all admins being equal
