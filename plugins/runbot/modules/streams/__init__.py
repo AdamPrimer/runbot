@@ -1,39 +1,70 @@
 from __future__ import (absolute_import, print_function, division,
                         unicode_literals)
-
-import os
 import re
 import time
-import yaml
-import requests
 
-from plugins.runbot.config import RunBotConfig
-from plugins.runbot.services import load_services, available_services
+from plugins.runbot.modules import (
+    RunBotModule,
+    module_class,
+    require_admin,
+    require_super,
+    case_insensitive_in
+)
+from plugins.runbot.modules.streams.services import (
+    load_services,
+    available_services
+)
 
-def case_insensitive_in(item, container):
-    if isinstance(container, dict):
-        container = container.keys()
-        
-    try:
-        s = item.lower()
-        idx = [c.lower() for c in container].index(s)
-    except ValueError as e:
-        return False
-    return container[idx]
+add_list_keywords = {
+    'admin': ('admin_users', 'administrators'),
+    'admins': ('admin_users', 'administrators'),
+    'game':  ('games', 'games list'),
+    'games':  ('games', 'games list'),
+    'banword': ('keyword_blacklist', 'banned words list'),
+    'banwords': ('keyword_blacklist', 'banned words list'),
+    'keyword': ('keyword_whitelist', 'keywords list'),
+    'keywords': ('keyword_whitelist', 'keywords list'),
+    'whitelist': ('streamer_whitelist', 'whitelist'),
+    'blacklist': ('streamer_blacklist', 'blacklist'),
+}
 
-class RunBotState:
-    def __init__(self, irc_c, channel, config_file, superadmins=None, config_folder=""):
-        self.irc_c = irc_c
-        self.channel = channel
-        self.config = RunBotConfig(config_file, config_folder)
-        self.superadmins = superadmins
+del_list_keywords = {
+    'unadmin': ('admin_users', 'administrators'),
+    'ungame':   ('games', 'games list'),
+    'unbanword': ('keyword_blacklist', 'banned words list'),
+    'unkeyword': ('keyword_whitelist', 'keywords list'),
+    'unwhitelist': ('streamer_whitelist', 'whitelist'),
+    'unblacklist': ('streamer_blacklist', 'blacklist'),
+}
+
+@module_class
+class StreamsModule(RunBotModule):
+    def __init__(self, runbot, irc_c, channel, config):
+        super(StreamsModule, self).__init__(runbot, irc_c, channel, config)
+    
+        self.default_config = {
+            'announce_limit': 1800,
+            'display_cutoff': 80,
+            'games': [],
+            'keyword_blacklist': [],
+            'keyword_whitelist': [],
+            'services': [
+                'twitch'
+            ],
+            'streamer_blacklist': [],
+            'streamer_whitelist': []
+        }
+
+        for key, val in self.default_config.iteritems():
+            if not self.config.__getattr__(key):
+                self.config.__setattr__(key, val)
 
         load_services(self.config.services)
 
         self.services = {}
         for service in self.config.services:
             self.services[service] = available_services[service](self.config.games)
-
+        
         self._streams = {}
         self.announcements = {}
 
@@ -41,30 +72,77 @@ class RunBotState:
         
         self.update_streams(on_new_broadcast=None)
 
-        print("Channel {} initialized.".format(self.channel))
+        self.register_command('update_streams', self.cmd_update_streams, channels=[self.channel])
+        self.register_command('streams',        self.cmd_streams, channels=[self.channel])
+
+        for keyword, args in add_list_keywords.iteritems():
+            self.register_command(keyword, self.cmd_add_item_to_list, channels=[self.channel])
+
+        for keyword, args in del_list_keywords.iteritems():
+            self.register_command(keyword, self.cmd_del_item_from_list, channels=[self.channel])
+
+        self.register_cron('update_streams', self.cron_update_streams, self.runbot.config['update_interval'])
+
+        print("[RunBot] [{}] Streams Module loaded.".format(self.channel))
+
+    @require_admin
+    def cmd_add_item_to_list(self, irc_c, msg, trigger, args, kargs):
+        (variable, text) = add_list_keywords[trigger]
+        if not args:
+            msg.reply("Current {}: {}".format(text,
+                ", ".join(self.config.__getattr__(variable))))
+            return
+            
+        if self.add_to_list(variable, args):
+            msg.reply("Added {} to the {}.".format(" ".join(args), text))
+            if variable in ["games"]:
+                self.update_streams(on_new_broadcast=None)
+        else:
+            msg.reply("Failed to add {} to the {}.".format(" ".join(args), text))
+
+    @require_admin
+    def cmd_del_item_from_list(self, irc_c, msg, trigger, args, kargs):
+        (variable, text) = del_list_keywords[trigger]
+        if self.del_from_list(variable, args):
+            if trigger in ['unwhitelist', 'unblacklist']:
+                msg.reply("Removed {} from the {}.".format(" & ".join(args), text))
+            else:
+                msg.reply("Removed {} from the {}.".format(" ".join(args), text))
+        else:
+            msg.reply("Failed to remove {} from the {}.".format(" ".join(args), text))
     
+    @require_admin
+    def cmd_update_streams(self, irc_c, msg, trigger, args, kargs):
+        self.update_streams(on_new_broadcast=self.broadcast_live)
+
+    def cmd_streams(self, irc_c, msg, trigger, args, kargs):
+        self.show_streams()
+
+    def cron_update_streams(self, irc_c, name):
+        self.update_streams(on_new_broadcast=self.broadcast_live)
+
     @property
     def streams(self):
         return self.filter_streams(self._streams)
 
     def add_to_list(self, variable, keyword):
         if variable in ['keyword_whitelist', 'games']:
-            self._add_to_list(self.config.__getattr__(variable), " ".join(keyword))
+            self.config.list_add(variable, " ".join(keyword))
         else:
-            self._add_to_list(self.config.__getattr__(variable), keyword)
+            self.config.list_add(variable, keyword)
         self.config.save()
         return True
 
     def del_from_list(self, variable, keyword):
         if variable in ['keyword_blacklist', 'games']:
-            self._del_from_list(self.config.__getattr__(variable), " ".join(keyword))
+            self.config.list_rm(variable, " ".join(keyword))
         elif variable in ['admin_users']:
             for user in keyword:
-                if user.lower() in self.superadmins:
+                if case_insensitive_in(user, self.runbot.superadmins):
                     return False
-            self._del_from_list(self.config.__getattr__(variable), keyword)
+            self.config.list_rm(variable, keyword)
         else:
-            self._del_from_list(self.config.__getattr__(variable), keyword)
+            self.config.list_rm(variable, keyword)
         self.config.save()
         return True
 
@@ -112,7 +190,7 @@ class RunBotState:
         return streams
 
     def update_streams(self, on_new_broadcast):
-        print("Checking For Streams...")
+        print("[RunBot] [{}] [streams] Checking For Streams...".format(self.channel))
         latest_streams = {}
             
         for name, service in self.services.iteritems():
@@ -169,37 +247,3 @@ class RunBotState:
         self.msg("NOW LIVE: {} | {}".format(
                 stream['url'], stream['title']))
         time.sleep(0.2)
-
-    def privmsg(self, to, message):
-        self.irc_c.PRIVMSG(to, message)
-
-    def msg(self, message):
-        self.irc_c.PRIVMSG(self.channel, message)
-
-    def _add_to_list(self, container, item):
-        if not isinstance(item, list):
-            item = [item]
-        
-        results = []
-        for itm in item:
-            s = itm.lower()
-            try:
-                idx = [c.lower() for c in container].index(s)
-                results.append(False)
-            except ValueError as e:
-                container.append(itm)
-                results.append(True)
-        return results
-
-    def _del_from_list(self, container, item):
-        if not isinstance(item, list):
-            item = [item]
-        
-        results = []
-        for s in [s.lower() for s in item]:
-            try:
-                idx = [c.lower() for c in container].index(s)
-                container.pop(idx)
-            except ValueError as e:
-                results.append(False)
-        return results

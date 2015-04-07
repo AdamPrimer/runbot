@@ -1,14 +1,12 @@
 from __future__ import (absolute_import, print_function, division,
                         unicode_literals)
-
-import re
 import requests
 
-from plugins.runbot.services import service_class
-from plugins.runbot.services.service import RunBotService
+from plugins.runbot.modules.streams.services import service_class
+from plugins.runbot.modules.streams.services.service import RunBotService
 
 @service_class
-class HitboxService(RunBotService):
+class TwitchService(RunBotService):
     def __init__(self, games=[]):
         self.games = games
 
@@ -16,8 +14,7 @@ class HitboxService(RunBotService):
             self.games = [self.games]
         
         self.endpoints = {
-            'stream': 'https://www.hitbox.tv/api/media/live/list',
-            'game': 'https://www.hitbox.tv/api/game/'
+            'stream': 'https://api.twitch.tv/kraken/streams'
         }
 
         self.num_per_req = 100;
@@ -34,10 +31,10 @@ class HitboxService(RunBotService):
         '''
         
         return {
-            'title': stream['media_status'],
-            'viewers': stream['media_views'],
-            'streamer': stream['media_user_name'],
-            'url': stream['channel']['channel_link'],
+            'title': stream['channel'].get('status', ''),
+            'viewers': stream.get('viewers', 0),
+            'streamer': stream['channel'].get('display_name', ''),
+            'url': stream['channel'].get('url', ''),
         }
 
     def get_all_streams(self):
@@ -45,7 +42,8 @@ class HitboxService(RunBotService):
 
         Returns:
             A list of dicts, where each dict is a stream as returned by the
-            Hitbox API.
+            Twitch v3 API.
+            https://github.com/justintv/Twitch-API/blob/master/v3_resources/streams.md
         '''
 
         streams = []
@@ -53,43 +51,34 @@ class HitboxService(RunBotService):
             streams.extend(self.get_all_streams_of_game(game))
         return streams
 
-    def get_all_streams_of_game(self, game):
-        game_url = game.lower().replace(" ", "-").replace(".", "").replace(":", "")
-        url = "{}/{}".format(self.endpoints['game'], game_url)
-
-        params = {
-            'seo': 'true'
-        }
-        req = requests.get(url, params=params)
-        req_json = req.json()
-
-        game_id = req_json.get('category', {}).get('category_id', None)
-
-        if not game_id:
-            return []
-
+    def get_all_streams_of_streamers(self, streamers):
         url = self.endpoints['stream']
         params = {
-            'game': game_id,
-            'hiddenOnly': 'false',
-            'liveonly': 'true',
+            'channel': ",".join(streamers)
+        }
+        return self.get_all_streams_from_url(url, params)
+
+    def get_all_streams_of_game(self, game):
+        url = self.endpoints['stream']
+        params = {
+            'game': game
         }
         return self.get_all_streams_from_url(url, params)
 
     def get_all_streams_from_url(self, url, params):
         streams = []
-        offset = 0
-        while True:
-            page = self.get_page(url, params, offset, self.num_per_req)
+        page = self.get_page(url, params)
 
-            if not page:
-                break
+        total = page['_total']
+        streams.extend(page['streams'])
 
-            streams.extend(page['livestream'])
+        offset = self.num_per_req
+        last_page_offset = total // self.num_per_req * self.num_per_req;
 
-            if len(page['livestream']) < self.num_per_req:
-                break
-
+        while (offset < last_page_offset):
+            page = self.get_page(url, params, offset,
+                    self.num_per_req)
+            streams.extend(page['streams'])
             offset += self.num_per_req
         
         return streams
@@ -101,6 +90,4 @@ class HitboxService(RunBotService):
         }
         pagination.update(params)
         req = requests.get(url, params=pagination)
-        if req.content == "no_media_found":
-            return None
         return req.json()

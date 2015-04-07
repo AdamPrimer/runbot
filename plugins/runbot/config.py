@@ -11,14 +11,9 @@ class RunBotConfig:
         
         self._config = {
             'admin_users': [],
-            'announce_limit': 1800,
-            'display_cutoff': 80,
-            'games': [],
-            'keyword_blacklist': [],
-            'keyword_whitelist': [],
-            'services': ['twitch'],
-            'streamer_blacklist': [],
-            'streamer_whitelist': [],
+            'modules': [
+                'core'
+            ]
         }
 
         self.load()
@@ -52,3 +47,37 @@ class RunBotConfig:
 
     def __str__(self):
         return self._config.__str__()
+
+    def list_add(self, variable, item):
+        self._add_to_list(self.__getattr__(variable), item)
+
+    def list_rm(self, variable, item):
+        self._del_from_list(self.__getattr__(variable), item)
+
+    def _add_to_list(self, container, item):
+        if not isinstance(item, list):
+            item = [item]
+        
+        results = []
+        for itm in item:
+            s = itm.lower()
+            try:
+                idx = [c.lower() for c in container].index(s)
+                results.append(False)
+            except ValueError as e:
+                container.append(itm)
+                results.append(True)
+        return results
+
+    def _del_from_list(self, container, item):
+        if not isinstance(item, list):
+            item = [item]
+        
+        results = []
+        for s in [s.lower() for s in item]:
+            try:
+                idx = [c.lower() for c in container].index(s)
+                container.pop(idx)
+            except ValueError as e:
+                results.append(False)
+        return results
