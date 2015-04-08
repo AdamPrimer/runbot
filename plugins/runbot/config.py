@@ -49,20 +49,24 @@ class RunBotConfig:
         return self._config.__str__()
 
     def list_add(self, variable, item):
-        self._add_to_list(self.__getattr__(variable), item)
+        if variable not in self._config.keys():
+            self.__setattr__(variable, [])
+        return self._add_to_list(self.__getattr__(variable), item)
 
     def list_rm(self, variable, item):
-        self._del_from_list(self.__getattr__(variable), item)
+        if variable not in self._config.keys():
+            self.__setattr__(variable, [])
+        return self._del_from_list(self.__getattr__(variable), item)
 
     def _add_to_list(self, container, item):
         if not isinstance(item, list):
             item = [item]
-        
+
         results = []
         for itm in item:
-            s = itm.lower()
+            s = itm.lower() if isinstance(itm, str) else itm
             try:
-                idx = [c.lower() for c in container].index(s)
+                idx = [(c.lower() if isinstance(c, str) else c) for c in container].index(s)
                 results.append(False)
             except ValueError as e:
                 container.append(itm)
@@ -74,9 +78,9 @@ class RunBotConfig:
             item = [item]
         
         results = []
-        for s in [s.lower() for s in item]:
+        for s in [(s.lower() if isinstance(s, str) else s) for s in item]:
             try:
-                idx = [c.lower() for c in container].index(s)
+                idx = [(c.lower() if isinstance(c, str) else c) for c in container].index(s)
                 container.pop(idx)
             except ValueError as e:
                 results.append(False)
