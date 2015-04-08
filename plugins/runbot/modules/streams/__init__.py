@@ -222,6 +222,9 @@ class StreamsModule(RunBotModule):
         return True
 
     def apply_streamer_hidelist(self, streams):
+        if not self.config.hidden_streamers:
+            return streams
+
         for (streamer, ts) in list(self.config.hidden_streamers):
             ts = int(ts)
             if ts < time.time():
