@@ -100,7 +100,5 @@ Create `yourservice.py` in `/plugins/runbot/modules/streams/services`
 
 ## TODO ##
 
-- [streams] Allow blacklisting on a "timeout" so that bans wear off
-  automatically after a specified period.
 - [modules] Moderator/Admin hierarchy rather than all admins being equal
 - [modules] Add ability for `!help <command>`
