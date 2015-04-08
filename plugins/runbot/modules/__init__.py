@@ -58,16 +58,8 @@ def require_admin(wrapped):
                 msg.reply("Sorry, {} cannot perform that command.".format(msg.sender))
                 return
                 
-            login_cutoff = time.time() - self.runbot.config['login_timeout']
-            matched_name = case_insensitive_in(msg.sender, self.runbot.registered_users)
-            if (not matched_name
-                    or self.runbot.registered_users[matched_name] < login_cutoff):
-                irc_c.RAW('WHOIS {}'.format(msg.sender))
-                self.runbot._whois_event_stack[msg.sender].append(
-                    functools.partial(wrapped, self, irc_c, msg, trigger, args, kwargs)
-                )
-                return
-        return wrapped(self, irc_c, msg, trigger, args, kwargs)
+        func = functools.partial(wrapped, self, irc_c, msg, trigger, args, kwargs)
+        return self.runbot.execute_on_login(msg.sender, func)
     return _wrapper
 
 def require_super(wrapped):
@@ -77,16 +69,8 @@ def require_super(wrapped):
             msg.reply("Sorry, {} cannot perform that command.".format(msg.sender))
             return
             
-        login_cutoff = time.time() - self.runbot.config['login_timeout']
-        if (msg.sender not in self.runbot.registered_users 
-                or self.runbot.registered_users[msg.sender] < login_cutoff):
-            irc_c.RAW('WHOIS {}'.format(msg.sender))
-            self.runbot._whois_event_stack[msg.sender].append(
-                functools.partial(wrapped, self, irc_c, msg, trigger, args, kwargs)
-            )
-            return
-
-        return wrapped(self, irc_c, msg, trigger, args, kwargs)
+        func = functools.partial(wrapped, self, irc_c, msg, trigger, args, kwargs)
+        return self.runbot.execute_on_login(msg.sender, func)
     return _wrapper
 
 class RunBotModule(object):

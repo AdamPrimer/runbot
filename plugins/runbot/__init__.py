@@ -50,6 +50,14 @@ class RunBot:
         for channel in self.channels.keys():
             irc_c.JOIN(channel)
 
+    def execute_on_login(self, sender, func):
+        login_cutoff = time.time() - self.config['login_timeout']
+        if self.registered_users.get(sender, 0) > login_cutoff:
+            irc_c.RAW('WHOIS {}'.format(sender))
+            self._whois_event_stack[sender].append(func)
+            return
+        return func()
+
     def join_channel(self, channel):
         if channel in self.channels:
             return False
