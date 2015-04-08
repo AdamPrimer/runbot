@@ -19,8 +19,8 @@ class RecordsModule(RunBotModule):
             'records': 'http://www.speedrun.com/api_records.php'
         }
 
-        self.register_command('wr',    self.cmd_world_record, channels=[self.channel])
-        self.register_command('wrgame', self.cmd_set_wr_game, channels=[self.channel])
+        self.register_command('wr',     self.cmd_world_record)
+        self.register_command('wrgame', self.cmd_set_wr_game)
 
         print("[RunBot] [{}] Records Module loaded.".format(self.channel))
 

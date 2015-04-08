@@ -72,16 +72,16 @@ class StreamsModule(RunBotModule):
         
         self.update_streams(on_new_broadcast=None)
 
-        self.register_command('update_streams', self.cmd_update_streams, channels=[self.channel])
-        self.register_command('streams',        self.cmd_streams, channels=[self.channel])
-        self.register_command('rb_service',     self.cmd_add_service, channels=[self.channel])
-        self.register_command('rb_unservice',   self.cmd_del_service, channels=[self.channel])
+        self.register_command('update_streams', self.cmd_update_streams)
+        self.register_command('streams',        self.cmd_streams)
+        self.register_command('rb_service',     self.cmd_add_service)
+        self.register_command('rb_unservice',   self.cmd_del_service)
 
         for keyword, args in add_list_keywords.iteritems():
-            self.register_command(keyword, self.cmd_add_item_to_list, channels=[self.channel])
+            self.register_command(keyword, self.cmd_add_item_to_list)
 
         for keyword, args in del_list_keywords.iteritems():
-            self.register_command(keyword, self.cmd_del_item_from_list, channels=[self.channel])
+            self.register_command(keyword, self.cmd_del_item_from_list)
 
         self.register_cron('update_streams', self.cron_update_streams, self.runbot.config['update_interval'])
 

@@ -15,10 +15,10 @@ class AdminModule(RunBotModule):
     def __init__(self, runbot, irc_c, channel, config):
         super(AdminModule, self).__init__(runbot, irc_c, channel, config)
     
-        self.register_command('rbjoin',        self.cmd_join_channel, channels=[self.channel])
-        self.register_command('rbpart',        self.cmd_part_channel, channels=[self.channel])
-        self.register_command('rbadd',         self.cmd_add_channel, channels=[self.channel])
-        self.register_command('rbrm',          self.cmd_del_channel, channels=[self.channel])
+        self.register_command('rbjoin', self.cmd_join_channel)
+        self.register_command('rbpart', self.cmd_part_channel)
+        self.register_command('rbadd',  self.cmd_add_channel)
+        self.register_command('rbrm',   self.cmd_del_channel)
 
         print("[RunBot] [{}] Admin Module loaded.".format(self.channel))
 

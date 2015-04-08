@@ -89,16 +89,16 @@ class RunBotModule(object):
     def register_command(self, commands, function, channels=None):
         if not isinstance(commands, list):
             commands = [commands]
+
+        if not channels:
+            channels = [self.channel]
+
         if channels and not isinstance(channels, list):
             channels = [channels]
             
         self._commands.append((commands, function, channels))
         
-        if channels:
-            function = triggers_on.channel(*channels)(function)
-        else:
-            function = function.__func__
-
+        function = triggers_on.channel(*channels)(function)
         function.__plugs__ = ('triggers', commands)
             
         cm = ComponentManager(self.irc_c, {})

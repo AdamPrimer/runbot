@@ -11,10 +11,10 @@ class CoreModule(RunBotModule):
     def __init__(self, runbot, irc_c, channel, config):
         super(CoreModule, self).__init__(runbot, irc_c, channel, config)
     
-        self.register_command('rb_commands',    self.cmd_commands, channels=[self.channel])
-        self.register_command('rb_leave',       self.cmd_part_channel, channels=[self.channel])
-        self.register_command('rb_module',     self.cmd_add_module, channels=[self.channel])
-        self.register_command('rb_unmodule',   self.cmd_del_module, channels=[self.channel])
+        self.register_command('rb_commands', self.cmd_commands)
+        self.register_command('rb_leave',    self.cmd_part_channel)
+        self.register_command('rb_module',   self.cmd_add_module)
+        self.register_command('rb_unmodule', self.cmd_del_module)
 
         print("[RunBot] [{}] Core Module loaded.".format(self.channel))
 
