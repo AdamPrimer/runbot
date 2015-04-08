@@ -77,10 +77,10 @@ class StreamsModule(RunBotModule):
         self.register_command('rb_service',     self.cmd_add_service)
         self.register_command('rb_unservice',   self.cmd_del_service)
 
-        for keyword, args in add_list_keywords.iteritems():
+        for keyword in add_list_keywords.keys():
             self.register_command(keyword, self.cmd_add_item_to_list)
 
-        for keyword, args in del_list_keywords.iteritems():
+        for keyword in del_list_keywords.keys():
             self.register_command(keyword, self.cmd_del_item_from_list)
 
         self.register_cron('update_streams', self.cron_update_streams, self.runbot.config['update_interval'])
