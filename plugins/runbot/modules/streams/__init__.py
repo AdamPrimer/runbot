@@ -17,8 +17,6 @@ from plugins.runbot.modules.streams.services import (
 )
 
 add_list_keywords = {
-    'admin': ('admin_users', 'administrators'),
-    'admins': ('admin_users', 'administrators'),
     'game':  ('games', 'games list'),
     'games':  ('games', 'games list'),
     'banword': ('keyword_blacklist', 'banned words list'),
@@ -30,7 +28,6 @@ add_list_keywords = {
 }
 
 del_list_keywords = {
-    'unadmin': ('admin_users', 'administrators'),
     'ungame':   ('games', 'games list'),
     'unbanword': ('keyword_blacklist', 'banned words list'),
     'unkeyword': ('keyword_whitelist', 'keywords list'),
