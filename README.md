@@ -104,5 +104,4 @@ Create `yourservice.py` in `/plugins/runbot/modules/streams/services`
 
 ## TODO ##
 
-- [modules] Moderator/Admin hierarchy rather than all admins being equal
 - [modules] Add ability for `!help <command>`
