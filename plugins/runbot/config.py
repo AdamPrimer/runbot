@@ -42,7 +42,7 @@ class RunBotConfigDict(dict):
 
     def __getitem__(self, key):
         rkey = self._rkey(key)
-        return super(RunBotConfigDict, self).__getitem__(key)
+        return super(RunBotConfigDict, self).__getitem__(rkey)
 
     def __delitem__(self, key):
         rkey = self._rkey(key) 

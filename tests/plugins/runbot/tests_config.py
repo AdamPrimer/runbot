@@ -248,5 +248,11 @@ class RunBotConfigDictTestCase(unittest.TestCase):
 
         self.assertEquals(sorted(map(list, items)), sorted(_items))
 
+    def test_get(self):
+        self.rbd.append(('Vulajin', 1234));
+        self.assertEquals(self.rbd['Vulajin'], ['Vulajin', 1234])
+        self.assertEquals(self.rbd['vulajin'], ['Vulajin', 1234])
+        self.assertEquals(self.rbd['vuLAjin'], ['Vulajin', 1234])
+
 if __name__ == "__main__":
     unittest.main()
