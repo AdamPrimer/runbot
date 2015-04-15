@@ -2,6 +2,7 @@ from __future__ import (absolute_import, print_function, division,
                         unicode_literals)
 import re
 import time
+import datetime
 
 from plugins.runbot.modules import (
     RunBotModule,
@@ -91,7 +92,15 @@ class StreamsModule(RunBotModule):
     @require_admin
     def cmd_hide_streamer(self, irc_c, msg, trigger, args, kargs):
         if not args:
-            hidden = ", ".join(self.config.hidden) if self.config.hidden else ""
+            hidden = []
+            if self.config.hidden_streamers:
+                for streamer, ts in self.config.hidden_streamers:
+                    seconds = int(ts)-int(time.time())
+                    if seconds > 0:
+                        hidden.append("{} ({})".format(
+                        streamer, str(datetime.timedelta(seconds=seconds))))
+   
+            hidden = ", ".join(hidden)
             msg.reply("Currently hidden streamers: {}".format(hidden))
             return
 
@@ -102,15 +111,19 @@ class StreamsModule(RunBotModule):
         try:
             streamer = args[0]
             length = int(args[1])
+            if length < 1:
+                raise ValueError("You must hide for at least 1 minute")
+            if length > 43200:
+                raise ValueError("Cannot hide for more than 30 days")
         except ValueError as e:
-            msg.reply("Invalid length. Usage: !hide username 3600")
+            msg.reply("Invalid time. Usage: !hide username 30")
             return
 
         self.config.list_add('hidden_streamers',
-                (streamer, int(time.time() + length)))
+                (streamer, str(int(time.time()) + (length * 60))))
         self.config.save()
 
-        msg.reply("Streamer {} has been hidden for {} seconds.".format(
+        msg.reply("Streamer {} has been hidden for {} minutes.".format(
                 streamer, length))
 
     @require_admin
@@ -153,12 +166,15 @@ class StreamsModule(RunBotModule):
 
         del self.services[service]
 
-        self.config.list_rm('services', service)
-        self.config.save()
+        try:
+            self.config.list_rm('services', service)
+            self.config.save()
 
-        self.update_streams(on_new_broadcast=None)
+            self.update_streams(on_new_broadcast=None)
 
-        msg.reply("Removed the {} service.".format(service))
+            msg.reply("Removed the {} service.".format(service))
+        except KeyError as e:
+            msg.reply("The {} service is not loaded.".format(service))
 
     @require_admin
     def cmd_add_item_to_list(self, irc_c, msg, trigger, args, kargs):
@@ -209,15 +225,19 @@ class StreamsModule(RunBotModule):
         return True
 
     def del_from_list(self, variable, keyword):
-        if variable in ['keyword_blacklist', 'games']:
-            self.config.list_rm(variable, " ".join(keyword))
-        elif variable in ['admin_users']:
-            for user in keyword:
-                if case_insensitive_in(user, self.runbot.superadmins):
-                    return False
-            self.config.list_rm(variable, keyword)
-        else:
-            self.config.list_rm(variable, keyword)
+        try:
+            if variable in ['keyword_blacklist', 'games']:
+                self.config.list_rm(variable, " ".join(keyword))
+            elif variable in ['admin_users']:
+                for user in keyword:
+                    if case_insensitive_in(user, self.runbot.superadmins):
+                        return False
+                self.config.list_rm(variable, keyword)
+            else:
+                self.config.list_rm(variable, keyword)
+        except KeyError:
+            return False
+        
         self.config.save()
         return True
 
@@ -226,23 +246,26 @@ class StreamsModule(RunBotModule):
             return streams
 
         for (streamer, ts) in list(self.config.hidden_streamers):
-            ts = int(ts)
-            if ts < time.time():
-                self.config.list_rm('hidden_streamers', (streamer, ts))
+            if int(ts) < time.time():
+                try:
+                    self.config.list_rm('hidden_streamers', (streamer, ts))
+                except KeyError:
+                    pass
+
         self.config.save()
 
         if not self.config.hidden_streamers:
             return streams
 
         return {stream_id: stream for stream_id, stream in streams.iteritems()
-            if not case_insensitive_in(stream['streamer'], zip(*self.config.hidden_streamers)[0])}
+            if not stream['streamer'] in self.config.hidden_streamers}
 
     def apply_streamer_whitelist(self, streams, all_streams):
         if not self.config.streamer_whitelist:
             return streams
 
         streams.update({stream_id: stream for stream_id, stream in all_streams.iteritems()
-            if case_insensitive_in(stream['streamer'], self.config.streamer_whitelist)})
+            if stream['streamer'] in self.config.streamer_whitelist})
 
         return streams
 
@@ -251,7 +274,7 @@ class StreamsModule(RunBotModule):
             return streams
 
         return {stream_id: stream for stream_id, stream in streams.iteritems()
-            if not case_insensitive_in(stream['streamer'], self.config.streamer_blacklist)}
+            if not stream['streamer'] in self.config.streamer_blacklist}
 
     def apply_keyword_whitelist(self, streams):
         if not self.config.keyword_whitelist:
