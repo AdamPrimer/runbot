@@ -35,7 +35,7 @@ class CoreModule(RunBotModule):
             if self.config.admin_users:
                 admin_users = ["{} ({})".format(admin, level) 
                         for admin, level in self.config.admin_users]
-            msg.reply("Current loaded admin_users: {}".format(", ".join(admin_users)))
+            msg.reply("Current administrators: {}".format(", ".join(admin_users)))
             return
 
         if len(args) != 2:
@@ -46,9 +46,9 @@ class CoreModule(RunBotModule):
             admin = args[0]
             level = int(args[1])
             if level < 1:
-                raise ValueError("Admins must be at least level 1")
+                raise ValueError("Administrators must be at least level 1")
             if level > 9000:
-                raise ValueError("Admins cannot go above level 9000")
+                raise ValueError("Administrators cannot go above level 9000")
         except ValueError as e:
             msg.reply("Invalid level (Range: 0-9000). Usage: !rb_admin nick <level>")
             return
@@ -57,7 +57,7 @@ class CoreModule(RunBotModule):
         if not case_insensitive_in(sender, self.runbot.superadmins):
             level1 = self.config.admin_users[sender][1]
             if level > level1: 
-                msg.reply("Sorry, you can only make admin_users of level {} or lower.".format(
+                msg.reply("Sorry, you can only make administrators of level {} or lower.".format(
                     level1
                 ))
                 return
@@ -65,7 +65,7 @@ class CoreModule(RunBotModule):
         self.config.list_add('admin_users', (admin, level))
         self.config.save()
 
-        msg.reply("The user {} was added to the admin list at level {}".format(
+        msg.reply("The user {} was added to the list of administrators at level {}".format(
             admin, level
         ))
 
@@ -77,14 +77,14 @@ class CoreModule(RunBotModule):
         sender = msg.sender
         nick = args[0]
         if nick not in self.config.admin_users:
-            msg.reply("Sorry, {} is not an admin.".format(nick))
+            msg.reply("Sorry, {} is not an administrator.".format(nick))
             return
 
         if not case_insensitive_in(sender, self.runbot.superadmins):
             level1 = self.config.admin_users[sender][1]
             level2 = self.config.admin_users[nick][1]
             if level1 <= level2: 
-                msg.reply("Sorry, only admin_users of level {} or greater may remove {}. You are level {}.".format(
+                msg.reply("Sorry, only admininistrators of level {} or greater may remove {}. You are level {}.".format(
                     level2 + 1, nick, level1
                 ))
                 return
@@ -92,12 +92,12 @@ class CoreModule(RunBotModule):
         try:
             self.config.list_rm('admin_users', nick)
         except KeyError:
-            msg.reply("Was unable to remove {} from the admin list.".format(nick))
+            msg.reply("Was unable to remove {} from the administrators list.".format(nick))
             return
 
         self.config.save()
     
-        msg.reply("The user {} was removed from the admin list.".format(nick))
+        msg.reply("The user {} was removed from the administrators list.".format(nick))
 
     @require_admin
     def cmd_add_module(self, irc_c, msg, trigger, args, kargs):
