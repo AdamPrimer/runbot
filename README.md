@@ -12,6 +12,10 @@ See `runbot.conf`
 
 Advanced users also see: `core.conf`
 
+## Running Unit Tests ##
+
+    python -m unittest tests
+
 ## Adding a new module ##
 
 1. Create the directory `yourmodule` in `/plugins/runbot/modules/`

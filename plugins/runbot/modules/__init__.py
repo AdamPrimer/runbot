@@ -53,7 +53,7 @@ def require_admin(wrapped):
     def _wrapper(self, irc_c, msg, trigger, args, kwargs):
         # Only require admin to perform actions, not to simply list things
         if args:
-            if (not case_insensitive_in(msg.sender, self.config.admin_users)
+            if (not msg.sender in self.config.admin_users
                     and not case_insensitive_in(msg.sender, self.runbot.superadmins)):
                 msg.reply("Sorry, {} cannot perform that command.".format(msg.sender))
                 return
@@ -65,7 +65,7 @@ def require_admin(wrapped):
 def require_super(wrapped):
     @functools.wraps(wrapped)
     def _wrapper(self, irc_c, msg, trigger, args, kwargs):
-        if not case_insensitive_in(msg.sender, self.runbot.superadmins):
+        if not msg.sender in self.runbot.superadmins:
             msg.reply("Sorry, {} cannot perform that command.".format(msg.sender))
             return
             

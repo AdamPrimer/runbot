@@ -3,7 +3,7 @@ from __future__ import (absolute_import, print_function, division,
 from plugins.runbot.modules import (
     RunBotModule,
     module_class,
-    require_admin
+    require_admin,
 )
 
 @module_class
@@ -42,7 +42,11 @@ class CoreModule(RunBotModule):
             msg.reply("Loaded the {} module.".format(module))
         else:
             msg.reply("Could not load the {} module.".format(module))
-            self.config.list_rm('modules', module)
+            try:
+                self.config.list_rm('modules', module)
+            except KeyError:
+                pass
+                    
             self.config.save()
 
     @require_admin
@@ -56,8 +60,12 @@ class CoreModule(RunBotModule):
 
         module = args[0]
 
-        self.config.list_rm('modules', module)
-        self.config.save()
+        try:
+            self.config.list_rm('modules', module)
+            self.config.save()
+        except KeyError:
+            msg.reply("The {} module is not loaded.".format(module))
+            return
 
         channel = self.runbot.channels[msg.channel]
         channel.reload_modules()
