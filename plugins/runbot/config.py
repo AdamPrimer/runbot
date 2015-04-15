@@ -152,4 +152,8 @@ class RunBotConfig:
     def list_rm(self, variable, item):
         if variable not in self._config.keys():
             self.__setattr__(variable, RunBotConfigDict())
-        del self.__getattr__(variable)[item]
+        try:
+            del self.__getattr__(variable)[item]
+        except KeyError:
+            return False
+        return True

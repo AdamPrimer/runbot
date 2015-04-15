@@ -214,7 +214,7 @@ class StreamsModule(RunBotModule):
         return self.filter_streams(self._streams)
 
     def add_to_list(self, variable, keyword):
-        if variable in ['keyword_whitelist', 'games']:
+        if variable in ['keyword_whitelist', 'keyword_blacklist', 'games']:
             self.config.list_add(variable, " ".join(keyword))
         else:
             self.config.list_add(variable, keyword)
@@ -223,7 +223,7 @@ class StreamsModule(RunBotModule):
 
     def del_from_list(self, variable, keyword):
         try:
-            if variable in ['keyword_blacklist', 'games']:
+            if variable in ['keyword_whitelist', 'keyword_blacklist', 'games']:
                 self.config.list_rm(variable, " ".join(keyword))
             elif variable in ['admin_users']:
                 for user in keyword:
