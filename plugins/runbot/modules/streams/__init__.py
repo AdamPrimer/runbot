@@ -111,8 +111,8 @@ class StreamsModule(RunBotModule):
         try:
             streamer = args[0]
             length = int(args[1])
-            if length < 1:
-                raise ValueError("You must hide for at least 1 minute")
+            if length < 0:
+                raise ValueError("You must hide for at least 0 minutes")
             if length > 43200:
                 raise ValueError("Cannot hide for more than 30 days")
         except ValueError as e:
