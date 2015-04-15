@@ -89,21 +89,22 @@ class RunBotConfigTestCase(unittest.TestCase):
 
     def test_list_rm_tuple_mismatch(self):
         self.config.list_add('variable1', ('Vulajin', 1234))
-        
-        exception_raise = False
-        try:
-            self.config.list_rm('variable1', ('Vulajin', 12345))
-        except KeyError as e:
-            exception_raised = True
-            pass
+        self.assertFalse(self.config.list_rm('variable1', ('Vulajin', 12345)))
 
         self.config2._config.update({
             'variable1': {
                 'vulajin': ['Vulajin', 1234]
             }
         })
-        self.assertTrue(exception_raised)
         self.assertEquals(repr(self.config), repr(self.config2))
+
+    def test_list_rm_invalid(self):
+        self.assertFalse(self.config.list_rm('variable1', ('Vulajin', 1234)))
+        self.config.list_add('variable1', ('Vulajin', 1234))
+        self.assertTrue(self.config.list_rm('variable1', ('Vulajin', 1234)))
+        self.assertFalse(self.config.list_rm('variable1', ('Vulajin', 1234)))
+        self.config.list_add('variable1', ('Vulajin', 1234))
+        self.assertFalse(self.config.list_rm('variable1', ('Hulajin', 1234)))
 
     def test_save_and_load(self):
         self.config.list_add('variable1', ('Vulajin', 1234))
