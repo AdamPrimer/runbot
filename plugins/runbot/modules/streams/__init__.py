@@ -177,27 +177,37 @@ class StreamsModule(RunBotModule):
     def cmd_add_item_to_list(self, irc_c, msg, trigger, args, kargs):
         (variable, text) = add_list_keywords[trigger]
         if not args:
-            msg.reply("Current {}: {}".format(text,
-                ", ".join(self.config.__getattr__(variable))))
+            items = self.config.__getattr__(variable)
+            if items:
+                msg.reply("Current {}: {}".format(text, ", ".join(items)))
+            else:
+                msg.reply("There are currently no {}".format(text))
             return
             
+        if variable in ['keyword_whitelist', 'keyword_blacklist', 'games']:
+            args = " ".join(args)
+        else:
+            args = args[0]
+
         if self.add_to_list(variable, args):
-            msg.reply("Added {} to the {}.".format(" ".join(args), text))
+            msg.reply("Added {} to the {}.".format(args, text))
             if variable in ["games"]:
                 self.update_streams(on_new_broadcast=None)
         else:
-            msg.reply("Failed to add {} to the {}.".format(" ".join(args), text))
+            msg.reply("Failed to add {} to the {}.".format(args, text))
 
     @require_admin
     def cmd_del_item_from_list(self, irc_c, msg, trigger, args, kargs):
         (variable, text) = del_list_keywords[trigger]
-        if self.del_from_list(variable, args):
-            if trigger in ['unwhitelist', 'unblacklist']:
-                msg.reply("Removed {} from the {}.".format(" & ".join(args), text))
-            else:
-                msg.reply("Removed {} from the {}.".format(" ".join(args), text))
+        if variable in ['keyword_whitelist', 'keyword_blacklist', 'games']:
+            args = " ".join(args)
         else:
-            msg.reply("Failed to remove {} from the {}.".format(" ".join(args), text))
+            args = args[0]
+
+        if self.del_from_list(variable, args):
+            msg.reply("Removed {} from the {}.".format(args, text))
+        else:
+            msg.reply("Failed to remove {} from the {}.".format(args, text))
     
     @require_admin
     def cmd_update_streams(self, irc_c, msg, trigger, args, kargs):
@@ -214,18 +224,13 @@ class StreamsModule(RunBotModule):
         return self.filter_streams(self._streams)
 
     def add_to_list(self, variable, keyword):
-        if variable in ['keyword_whitelist', 'keyword_blacklist', 'games']:
-            self.config.list_add(variable, " ".join(keyword))
-        else:
-            self.config.list_add(variable, keyword)
+        self.config.list_add(variable, keyword)
         self.config.save()
         return True
 
     def del_from_list(self, variable, keyword):
         try:
-            if variable in ['keyword_whitelist', 'keyword_blacklist', 'games']:
-                self.config.list_rm(variable, " ".join(keyword))
-            elif variable in ['admin_users']:
+            if variable in ['admin_users']:
                 for user in keyword:
                     if case_insensitive_in(user, self.runbot.superadmins):
                         return False
