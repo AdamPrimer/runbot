@@ -181,7 +181,7 @@ class StreamsModule(RunBotModule):
             if items:
                 msg.reply("Current {}: {}".format(text, ", ".join(items)))
             else:
-                msg.reply("There are currently no {}".format(text))
+                msg.reply("There is currently no {}".format(text))
             return
             
         if variable in ['keyword_whitelist', 'keyword_blacklist', 'games']:
