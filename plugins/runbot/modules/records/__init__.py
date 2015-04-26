@@ -21,6 +21,7 @@ class RecordsModule(RunBotModule):
 
         self.register_command('wr',     self.cmd_world_record)
         self.register_command('wrgame', self.cmd_set_wr_game)
+        self.register_command('wrtime', self.cmd_set_wr_timing)
 
         print("[RunBot] [{}] Records Module loaded.".format(self.channel))
 
@@ -38,11 +39,39 @@ class RecordsModule(RunBotModule):
         msg.reply("World Record Game set to be: {}".format(
                     self.config.wr_game))
 
+    @require_admin
+    def cmd_set_wr_timing(self, irc_c, msg, trigger, args, kargs):
+        if not args:
+            msg.reply("Current World Record Timing: {}".format(
+                    self.config.wr_timing))
+            return
+
+        timing = " ".join(args)
+
+        if timing not in ["rta", "igt"]:
+            msg.reply("Invalid option. Choose from: rta, igt")
+            return
+
+        self.config.wr_timing = timing
+        self.config.save()
+
+        msg.reply("World Record Timing set to be: {}".format(
+                    self.config.wr_timing))
+
+
     def cmd_world_record(self, irc_c, msg, trigger, args, kargs):
         if kargs and 'game' in kargs:
             game = kargs['game']
         else:
             game = self.config.wr_game or None
+
+        if kargs and 'timing' in kargs:
+            timing = kargs['timing']
+        else:
+            timing = self.config.wr_timing or "rta"
+
+        if timing not in ["rta", "igt"]:
+            timing = "rta"
 
         if not game:
             prefix = irc_c.config['triggers']['prefix']
@@ -50,28 +79,35 @@ class RecordsModule(RunBotModule):
                     prefix))
             return
 
+        if timing == "rta":
+            time_field = "time"
+        elif timing == "igt":
+            time_field = "timeigt"
+        else:
+            time_field = "time"
+
         cate = " ".join(args)
 
         records = []
-        data = self.get_record_times(game)
+        data = self.get_record_times(game, timing)
         if not data:
             msg.reply("Unable to obtain world records for: {}".format(game))
             return
-        
+
         for game, categories in data.iteritems():
             for category, record in categories.iteritems():
                 if not cate or category.lower() == cate.lower():
                     if not kargs.get('video', None) or not record.get('video', None):
                         records.append("{}: {} ({}) {}".format(
                             category,
-                            self.format_seconds(int(record['time'])),
+                            self.format_seconds(int(record[time_field])),
                             record['player'],
                             self.format_timestamp(int(record['date']))
                         ))
                     else:
                         records.append("{}: {} ({}) {} - {}".format(
                             category,
-                            self.format_seconds(int(record['time'])),
+                            self.format_seconds(int(record[time_field])),
                             record['player'],
                             self.format_timestamp(int(record['date'])),
                             record['video']
@@ -93,10 +129,9 @@ class RecordsModule(RunBotModule):
     def format_seconds(self, seconds):
         return str(datetime.timedelta(seconds=seconds))
 
-    def get_record_times(self, game):
+    def get_record_times(self, game, timing):
         params = {
             'game': game,
-            'timing': 'rta'
         }
         req = requests.get(self.endpoints['records'], params=params)
         if req.status_code != 200:

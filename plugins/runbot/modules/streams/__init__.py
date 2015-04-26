@@ -314,11 +314,11 @@ class StreamsModule(RunBotModule):
             try:
                 streams = [service.extract_stream_info(stream)
                     for stream in service.get_all_streams()]
-            except Exception:
-                pass
-            
-            latest_streams = {"{}_{}".format(name, stream['streamer']): stream
+                latest_streams = {"{}_{}".format(name, stream['streamer']): stream
                     for stream in streams}
+            except Exception as e:
+                print(e)
+                pass
 
         if on_new_broadcast:
             announcement_counter = 0
