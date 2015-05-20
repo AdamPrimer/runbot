@@ -100,26 +100,26 @@ class RecordsModule(RunBotModule):
                     if not kargs.get('video', None) or not record.get('video', None):
                         records.append("{}: {} ({}) {}".format(
                             category,
-                            self.format_seconds(int(record[time_field])),
+                            self.format_seconds(float(record[time_field])),
                             record['player'],
                             self.format_timestamp(int(record['date']))
                         ))
                     else:
                         records.append("{}: {} ({}) {} - {}".format(
                             category,
-                            self.format_seconds(int(record[time_field])),
+                            self.format_seconds(float(record[time_field])),
                             record['player'],
                             self.format_timestamp(int(record['date'])),
                             record['video']
                         ))
         
-            if len(records) > 8:
-                msg.reply("Too many categories to display all: {}".format(
-                    ", ".join(categories)))
+        if len(records) > 8:
+	    msg.reply("Too many categories to display all: {}".format(
+	        ", ".join(categories)))
 
-            for record in records[:8]:
-                msg.reply(record)
-                time.sleep(0.2)
+        for record in records[:8]:
+	    msg.reply(record)
+	    time.sleep(0.2)
 
     def format_timestamp(self, timestamp):
         return datetime.datetime.strftime(
