@@ -38,20 +38,20 @@ class RunBotConfigDict(dict):
     def __setitem__(self, key, value):
         rkey = self._rkey(key)
         rval = self._rval(value)
-        super(RunBotConfigDict, self).__setitem__(rkey, rval) 
+        super(RunBotConfigDict, self).__setitem__(rkey, rval)
 
     def __getitem__(self, key):
         rkey = self._rkey(key)
         return super(RunBotConfigDict, self).__getitem__(rkey)
 
     def __delitem__(self, key):
-        rkey = self._rkey(key) 
+        rkey = self._rkey(key)
         if key not in self:
             raise KeyError(rkey)
-        
-        rkey = self._rkey(key) 
+
+        rkey = self._rkey(key)
         self.pop(rkey)
-        
+
     def append(self, value):
         self[value] = value
 
@@ -68,7 +68,7 @@ class RunBotConfigDict(dict):
         if not is_listy:
             return rkey in self.keys()
         else:
-            return (len(self.get(rkey, [])) > 1 
+            return (len(self.get(rkey, [])) > 1
                     and self._rval(self[rkey][1:]) == self._rval(key[1:]))
 
     def __unicode__(self):
@@ -84,7 +84,7 @@ class RunBotConfig:
     def __init__(self, filename, folder=""):
         self.filename = filename
         self.folder = folder
-        
+
         self._config = {
             'admin_users': RunBotConfigDict(),
             'modules': RunBotConfigDict([
@@ -93,7 +93,7 @@ class RunBotConfig:
         }
 
         self.load()
-    
+
     def load(self):
         filename = os.path.join(self.folder, self.filename)
         if os.path.exists(filename) and os.path.isfile(filename):
@@ -117,7 +117,7 @@ class RunBotConfig:
             yaml.safe_dump(dump, fp,
                 indent=4,
                 encoding='utf-8',
-                allow_unicode=True, 
+                allow_unicode=True,
                 default_flow_style=False)
 
     def __getattr__(self, name):
@@ -143,7 +143,7 @@ class RunBotConfig:
         if variable not in self._config.keys():
             self.__setattr__(variable, RunBotConfigDict())
         return self.__getattr__(variable).values()
-    
+
     def list_add(self, variable, item):
         if variable not in self._config.keys():
             self.__setattr__(variable, RunBotConfigDict())

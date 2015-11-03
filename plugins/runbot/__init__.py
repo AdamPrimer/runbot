@@ -23,18 +23,18 @@ class RunBot:
             self.config = yaml.safe_load(fp)
 
         self.superadmins = self.config.get('superadmins', [])
-        
+
         self.registered_users = {}
         self._whois_event_stack = defaultdict(list)
 
         # Initialize all the channels
         for channel, config in self.config['channels'].iteritems():
-            self.channels[channel] = RunBotChannel(self, self.irc_c, channel, 
+            self.channels[channel] = RunBotChannel(self, self.irc_c, channel,
                     config,
                     config_folder=self.config['folder'])
 
         print("[RunBot] All channels loaded.")
-        
+
     @observe('IRC_RAW_MSG')
     def parse_whois(self, irc_c, msg):
         login = parse(":{server} {} {} {nick} :is identified for this nick", msg)
@@ -62,14 +62,14 @@ class RunBot:
         if channel in self.channels:
             return False
 
-        self.channels[channel] = RunBotChannel(self, self.irc_c, channel, 
+        self.channels[channel] = RunBotChannel(self, self.irc_c, channel,
                 self.config['channels'][channel],
                 config_folder=self.config['folder'])
 
     def part_channel(self, channel):
         if channel not in self.channels:
             return False
-        
+
         del self.channels[channel]
 
     def add_channel(self, channel):

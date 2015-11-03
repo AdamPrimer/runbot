@@ -39,7 +39,7 @@ del_list_keywords = {
 class StreamsModule(RunBotModule):
     def __init__(self, runbot, irc_c, channel, config):
         super(StreamsModule, self).__init__(runbot, irc_c, channel, config)
-    
+
         self.default_config = {
             'announce_limit': 1800,
             'display_cutoff': 80,
@@ -62,12 +62,12 @@ class StreamsModule(RunBotModule):
         self.services = {}
         for service in self.config.services:
             self.services[service] = available_services[service](self.config.games)
-        
+
         self._streams = {}
         self.announcements = {}
 
         self.stream_spam_limit = 8
-        
+
         self.update_streams(on_new_broadcast=None)
 
         self.register_command('update_streams', self.cmd_update_streams)
@@ -96,7 +96,7 @@ class StreamsModule(RunBotModule):
                     if seconds > 0:
                         hidden.append("{} ({})".format(
                         streamer, str(datetime.timedelta(seconds=seconds))))
-   
+
             hidden = ", ".join(hidden)
             msg.reply("Currently hidden streamers: {}".format(hidden))
             return
@@ -183,7 +183,7 @@ class StreamsModule(RunBotModule):
             else:
                 msg.reply("There is currently no {}".format(text))
             return
-            
+
         if variable in ['keyword_whitelist', 'keyword_blacklist', 'games']:
             args = " ".join(args)
         else:
@@ -208,7 +208,7 @@ class StreamsModule(RunBotModule):
             msg.reply("Removed {} from the {}.".format(args, text))
         else:
             msg.reply("Failed to remove {} from the {}.".format(args, text))
-    
+
     @require_admin
     def cmd_update_streams(self, irc_c, msg, trigger, args, kargs):
         self.update_streams(on_new_broadcast=self.broadcast_live)
@@ -239,7 +239,7 @@ class StreamsModule(RunBotModule):
                 self.config.list_rm(variable, keyword)
         except KeyError:
             return False
-        
+
         self.config.save()
         return True
 
@@ -281,7 +281,7 @@ class StreamsModule(RunBotModule):
     def apply_keyword_whitelist(self, streams):
         if not self.config.keyword_whitelist:
             return streams
-        
+
         whitelist = '|'.join(re.escape(term) for term in self.config.keyword_whitelist)
         whitelist_re = re.compile(whitelist, flags=re.IGNORECASE)
 
@@ -291,7 +291,7 @@ class StreamsModule(RunBotModule):
     def apply_keyword_blacklist(self, streams):
         if not self.config.keyword_blacklist:
             return streams
-        
+
         blacklist = '|'.join(re.escape(term) for term in self.config.keyword_blacklist)
         blacklist_re = re.compile(blacklist, flags=re.IGNORECASE)
 
@@ -309,7 +309,7 @@ class StreamsModule(RunBotModule):
     def update_streams(self, on_new_broadcast):
         print("[RunBot] [{}] [streams] Checking For Streams...".format(self.channel))
         latest_streams = {}
-            
+
         for name, service in self.services.iteritems():
             try:
                 streams = [service.extract_stream_info(stream)
@@ -324,7 +324,7 @@ class StreamsModule(RunBotModule):
             announcement_counter = 0
             announce_cutoff = time.time() - self.config.announce_limit
             for stream_id, stream in self.filter_streams(latest_streams).iteritems():
-                if (stream_id not in self.streams 
+                if (stream_id not in self.streams
                         and (
                             stream_id not in self.announcements
                             or self.announcements[stream_id] < announce_cutoff)):
@@ -336,7 +336,7 @@ class StreamsModule(RunBotModule):
                     announcement_counter += 1
 
                 self.announcements[stream_id] = time.time()
-    
+
         self._streams = latest_streams
 
     def show_streams(self):
