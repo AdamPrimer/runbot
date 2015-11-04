@@ -50,17 +50,19 @@ class RollModule(RunBotModule):
         msg.reply(response)
 
     def cmd_char(self, irc_c, msg, trigger, args, kargs):
-        char = self.generate_character(self.char_stats)
+        rollstr = args[0] if args else "3d6"
+        char = self.generate_character(self.char_stats, rollstr)
 
-        response = "{} -> {}".format(
-            msg.sender, ", ".join(["{}: {}".format(k, v) for k, v in char])
-        )
+        res = "{} -> {}".format(
+            msg.sender, ", ".join(["{}: {}".format(k, v) for k, v in char]))
+        msg.reply(res)
 
-        msg.reply(response)
+    def generate_character(self, stats, rollstr="3d6"):
+        '''Rolls 3d6 (or `rollstr`) for each `stat` in `stats`, returns a list
+        of tuples, each a pair of (`stat`, `total roll`).'''
 
-    def generate_character(self, stats):
-        rolls = [self.do_roll(self.parse_roll("3d6")) for stat in stats]
-        return zip(stats, map(sum, rolls))
+        rolls = [self.do_roll(self.parse_roll(rollstr)) for stat in stats]
+        return zip(stats, map(sum, [x[0] for x in rolls]))
 
     def parse_roll(self, msg):
         for pat, fields in self.patterns:
