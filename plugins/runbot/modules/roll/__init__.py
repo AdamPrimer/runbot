@@ -34,6 +34,9 @@ class RollModule(RunBotModule):
         print("[RunBot] [{}] Roll Module loaded.".format(self.channel))
 
     def cmd_roll(self, irc_c, msg, trigger, args, kargs):
+        if not args:
+            return
+
         cmd = args[0]
         name = args[1] if len(args) > 1 else cmd
 
