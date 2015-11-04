@@ -97,18 +97,28 @@ class RecordsModule(RunBotModule):
         for game, categories in data.iteritems():
             for category, record in categories.iteritems():
                 if not cate or category.lower() == cate.lower():
+                    if time_field == "time" and time_field not in record.keys():
+                        time_field = "timewithloads"
+
+                    players = [record['player']]
+                    for i in xrange(1, 20):
+                        field = "player{}".format(i)
+                        if field in record:
+                            players.append(record[field])
+                    players = ", ".join(players)
+
                     if not kargs.get('video', None) or not record.get('video', None):
                         records.append("{}: {} ({}) {}".format(
                             category,
                             self.format_seconds(float(record[time_field])),
-                            record['player'],
+                            players,
                             self.format_timestamp(int(record['date']))
                         ))
                     else:
                         records.append("{}: {} ({}) {} - {}".format(
                             category,
                             self.format_seconds(float(record[time_field])),
-                            record['player'],
+                            players, 
                             self.format_timestamp(int(record['date'])),
                             record['video']
                         ))
