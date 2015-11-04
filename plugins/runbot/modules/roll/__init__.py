@@ -41,6 +41,8 @@ class RollModule(RunBotModule):
         name = args[1] if len(args) > 1 else cmd
 
         rolls, drops = self.do_roll(self.parse_roll(cmd))
+        if not rolls:
+            return
 
         roll_list = map(str, rolls)
         if drops:
@@ -77,8 +79,12 @@ class RollModule(RunBotModule):
             if 'num' not in roll:
                 roll['num'] = 1
             return roll
+        return None
 
     def do_roll(self, roll):
+        if not roll:
+            return (None, None)
+
         rolls = []
         drops = []
         for i in xrange(0, roll.get('num', 1)):
