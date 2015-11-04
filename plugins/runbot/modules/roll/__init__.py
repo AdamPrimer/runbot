@@ -85,9 +85,13 @@ class RollModule(RunBotModule):
         if not roll:
             return (None, None)
 
+        num = roll.get('num', 1)
+        if num > 100:
+            num = 100
+
         rolls = []
         drops = []
-        for i in xrange(0, roll.get('num', 1)):
+        for i in xrange(0, num):
             rolls.append(random.randrange(1, roll.get('size', 6)+1))
 
         if 'drop' in roll:
