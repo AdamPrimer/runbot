@@ -11,7 +11,7 @@ from plugins.runbot.modules import (
 class CoreModule(RunBotModule):
     def __init__(self, runbot, irc_c, channel, config):
         super(CoreModule, self).__init__(runbot, irc_c, channel, config)
-    
+
         self.register_command('rb_commands', self.cmd_commands)
         self.register_command('rb_leave',    self.cmd_part_channel)
         self.register_command('rb_module',   self.cmd_add_module)
@@ -33,7 +33,7 @@ class CoreModule(RunBotModule):
         if not args:
             admin_users = []
             if self.config.admin_users:
-                admin_users = ["{} ({})".format(admin, level) 
+                admin_users = ["{} ({})".format(admin, level)
                         for admin, level in self.config.admin_users]
             msg.reply("Current administrators: {}".format(", ".join(admin_users)))
             return
@@ -41,7 +41,7 @@ class CoreModule(RunBotModule):
         if len(args) != 2:
             msg.reply("Incorrect arguments. Usage: !rb_admin nick <level>")
             return
-            
+
         try:
             admin = args[0]
             level = int(args[1])
@@ -56,7 +56,7 @@ class CoreModule(RunBotModule):
         sender = msg.sender
         if not case_insensitive_in(sender, self.runbot.superadmins):
             level1 = self.config.admin_users[sender][1]
-            if level > level1: 
+            if level > level1:
                 msg.reply("Sorry, you can only make administrators of level {} or lower.".format(
                     level1
                 ))
@@ -73,7 +73,7 @@ class CoreModule(RunBotModule):
     def cmd_del_admin(self, irc_c, msg, trigger, args, kargs):
         if not args:
             return
-        
+
         sender = msg.sender
         nick = args[0]
         if nick not in self.config.admin_users:
@@ -83,7 +83,7 @@ class CoreModule(RunBotModule):
         if not case_insensitive_in(sender, self.runbot.superadmins):
             level1 = self.config.admin_users[sender][1]
             level2 = self.config.admin_users[nick][1]
-            if level1 <= level2: 
+            if level1 <= level2:
                 msg.reply("Sorry, only admininistrators of level {} or greater may remove {}. You are level {}.".format(
                     level2 + 1, nick, level1
                 ))
@@ -96,7 +96,7 @@ class CoreModule(RunBotModule):
             return
 
         self.config.save()
-    
+
         msg.reply("The user {} was removed from the administrators list.".format(nick))
 
     @require_admin
@@ -104,7 +104,7 @@ class CoreModule(RunBotModule):
         if not args:
             msg.reply("Currently loaded modules: {}".format(", ".join(self.config.modules)))
             return
-        
+
         module = args[0]
 
         self.config.list_add('modules', module)
@@ -121,14 +121,14 @@ class CoreModule(RunBotModule):
                 self.config.list_rm('modules', module)
             except KeyError:
                 pass
-                    
+
             self.config.save()
 
     @require_admin
     def cmd_del_module(self, irc_c, msg, trigger, args, kargs):
         if not args:
             return
-        
+
         if args[0] == "core":
             msg.reply("You may not remove the core module.")
             return
@@ -149,7 +149,7 @@ class CoreModule(RunBotModule):
             msg.reply("Removed the {} module.".format(module))
         else:
             msg.reply("Could not unload the {} module.".format(module))
-        
+
     def cmd_commands(self, irc_c, msg, trigger, args, kargs):
         channel = self.runbot.channels[msg.channel]
         commands = []

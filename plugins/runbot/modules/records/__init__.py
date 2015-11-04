@@ -14,7 +14,7 @@ from plugins.runbot.modules import (
 class RecordsModule(RunBotModule):
     def __init__(self, runbot, irc_c, channel, config):
         super(RecordsModule, self).__init__(runbot, irc_c, channel, config)
-        
+
         self.endpoints = {
             'records': 'http://www.speedrun.com/api_records.php'
         }
@@ -122,14 +122,14 @@ class RecordsModule(RunBotModule):
                             self.format_timestamp(int(record['date'])),
                             record['video']
                         ))
-        
+
         if len(records) > 8:
-	    msg.reply("Too many categories to display all: {}".format(
-	        ", ".join(categories)))
+            msg.reply("Too many categories to display all: {}".format(
+                ", ".join(categories)))
 
         for record in records[:8]:
-	    msg.reply(record)
-	    time.sleep(0.2)
+            msg.reply(record)
+            time.sleep(0.2)
 
     def format_timestamp(self, timestamp):
         return datetime.datetime.strftime(
@@ -146,7 +146,7 @@ class RecordsModule(RunBotModule):
         req = requests.get(self.endpoints['records'], params=params)
         if req.status_code != 200:
             return None
-        
+
         data = req.json()
         if not data:
             return None

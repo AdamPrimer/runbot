@@ -14,7 +14,7 @@ from plugins.runbot.modules import (
 class AdminModule(RunBotModule):
     def __init__(self, runbot, irc_c, channel, config):
         super(AdminModule, self).__init__(runbot, irc_c, channel, config)
-    
+
         self.register_command('rbjoin', self.cmd_join_channel)
         self.register_command('rbpart', self.cmd_part_channel)
         self.register_command('rbadd',  self.cmd_add_channel)
@@ -29,7 +29,7 @@ class AdminModule(RunBotModule):
             prefix = irc_c.config['triggers']['prefix']
             msg.reply("Channel config not found. Please {}rbadd {} first.".format(prefix, channel))
             return
-        
+
         self.runbot.join_channel(channel)
         irc_c.JOIN(channel)
 

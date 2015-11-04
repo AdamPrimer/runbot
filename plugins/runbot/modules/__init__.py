@@ -25,13 +25,13 @@ def load_runbot_modules(modules):
         _, dirs, _ = os.walk("plugins/runbot/modules").next()
         if module not in dirs:
             return
-        
+
         importname = "{}.{}".format("plugins.runbot.modules", module)
         try:
             component_ns = import_module(importname)
         except ImportError as e:
             raise ImportError('runbot failed to load module (%s): %r' % (importname, e))
-        
+
         for name, member in inspect.getmembers(component_ns):
             if inspect.isclass(member) and hasattr(member, CLASS_MARKER):
                 available_modules[module] = member
@@ -40,7 +40,7 @@ def load_runbot_modules(modules):
 def case_insensitive_in(item, container):
     if isinstance(container, dict):
         container = container.keys()
-        
+
     try:
         s = item.lower()
         idx = [c.lower() for c in container].index(s)
@@ -57,7 +57,7 @@ def require_admin(wrapped):
                     and not case_insensitive_in(msg.sender, self.runbot.superadmins)):
                 msg.reply("Sorry, {} cannot perform that command.".format(msg.sender))
                 return
-                
+
         func = functools.partial(wrapped, self, irc_c, msg, trigger, args, kwargs)
         return self.runbot.execute_on_login(msg.sender, func)
     return _wrapper
@@ -68,7 +68,7 @@ def require_super(wrapped):
         if not msg.sender in self.runbot.superadmins:
             msg.reply("Sorry, {} cannot perform that command.".format(msg.sender))
             return
-            
+
         func = functools.partial(wrapped, self, irc_c, msg, trigger, args, kwargs)
         return self.runbot.execute_on_login(msg.sender, func)
     return _wrapper
@@ -95,12 +95,12 @@ class RunBotModule(object):
 
         if channels and not isinstance(channels, list):
             channels = [channels]
-            
+
         self._commands.append((commands, function, channels))
-        
+
         function = triggers_on.channel(*channels)(function)
         function.__plugs__ = ('triggers', commands)
-            
+
         cm = ComponentManager(self.irc_c, {})
         cm._install_hooks(self.irc_c, [function])
 
@@ -108,7 +108,7 @@ class RunBotModule(object):
         self._crons.append((name, function, seconds))
 
         function.__func__.__plugs__ = ('timers', [(name, seconds)])
-            
+
         cm = ComponentManager(self.irc_c, {})
         cm._install_hooks(self.irc_c, [function])
 

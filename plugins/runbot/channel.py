@@ -27,7 +27,7 @@ class RunBotChannel:
 
     def reload_modules(self):
         print("[RunBot] [{}] Reloading modules.".format(self.channel))
-        
+
         load_runbot_modules(self.config.modules)
 
         for module_name, module in list(self.modules.iteritems()):
